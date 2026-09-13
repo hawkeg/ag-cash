@@ -77,10 +77,25 @@ Based on Stitch designs with corporate fintech theme:
 ### Installation
 
 1. Clone the repository
-2. Copy `.env.example` to `.env.local`
-3. Configure environment variables
-4. Run `docker-compose up` to start all services
-5. Access the application at `http://localhost:3000`
+2. Copy `.env.example` to `.env.local` and configure environment variables
+3. Run `docker-compose up -d` in the `docker/` directory to start all services
+4. Access Supabase Studio at `http://localhost:3000`
+5. Access the application at `http://localhost:5173` (frontend) or `http://localhost:4001` (backend API)
+
+### Environment Variables
+
+Key environment variables to configure in `.env.local`:
+
+- `DATABASE_URL` - PostgreSQL connection string
+- `REDIS_URL` - Redis connection string
+- `SUPABASE_URL` - Supabase API URL
+- `SUPABASE_ANON_KEY` - Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+- `JWT_SECRET` - JWT secret for authentication (must be 32+ characters)
+- `ODOO_URL` - Odoo instance URL
+- `ODOO_DB` - Odoo database name
+- `ODOO_USER` - Odoo API username
+- `ODOO_PASSWORD` - Odoo API password
 
 ## Development
 
@@ -100,7 +115,8 @@ npm run dev
 
 ### Docker
 ```bash
-docker-compose up
+cd docker
+docker-compose up -d
 ```
 
 ## Project Board
@@ -109,4 +125,4 @@ Track progress at: https://github.com/hawkeg/ag-cash/projects
 
 ## License
 
-[Your License]
+MIT License - see [LICENSE](LICENSE) file for details
