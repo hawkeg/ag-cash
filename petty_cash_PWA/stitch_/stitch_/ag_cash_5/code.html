@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>AG-Cash | مسح وإرفاق الإيصال</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Noto+Sans+Arabic:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "background": "#f8f9ff",
+            "surface-container-lowest": "#ffffff",
+            "on-primary-fixed": "#00201c",
+            "surface-container": "#e5eeff",
+            "error": "#ba1a1a",
+            "on-primary": "#ffffff",
+            "surface-container-low": "#eff4ff",
+            "tertiary-fixed": "#85f8c4",
+            "secondary-container": "#d5e0f8",
+            "on-tertiary": "#ffffff",
+            "on-tertiary-fixed-variant": "#005137",
+            "surface-tint": "#316760",
+            "primary-container": "#235b54",
+            "secondary": "#545f73",
+            "error-container": "#ffdad6",
+            "secondary-fixed": "#d8e3fb",
+            "outline": "#707977",
+            "on-secondary": "#ffffff",
+            "tertiary-container": "#005f41",
+            "primary-fixed": "#b5eee4",
+            "surface-bright": "#f8f9ff",
+            "inverse-primary": "#9ad1c8",
+            "primary-fixed-dim": "#9ad1c8",
+            "surface-dim": "#cbdbf5",
+            "on-background": "#0b1c30",
+            "on-tertiary-fixed": "#002114",
+            "primary": "#01433d",
+            "on-surface-variant": "#404947",
+            "on-tertiary-container": "#68dca9",
+            "on-secondary-container": "#586377",
+            "secondary-fixed-dim": "#bcc7de",
+            "on-surface": "#0b1c30",
+            "on-secondary-fixed-variant": "#3c475a",
+            "on-primary-container": "#99d1c7",
+            "inverse-on-surface": "#eaf1ff",
+            "outline-variant": "#bfc8c6",
+            "on-primary-fixed-variant": "#144f48",
+            "surface-container-highest": "#d3e4fe",
+            "surface-container-high": "#dce9ff",
+            "surface": "#f8f9ff",
+            "surface-variant": "#d3e4fe",
+            "on-error-container": "#93000a",
+            "inverse-surface": "#213145",
+            "on-secondary-fixed": "#111c2d",
+            "tertiary": "#00452e",
+            "tertiary-fixed-dim": "#68dba9",
+            "on-error": "#ffffff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-xl": "1.75rem",
+            "space-xs": "0.25rem",
+            "space-md": "0.875rem",
+            "margin-mobile": "1rem",
+            "margin": "1rem",
+            "gutter-mobile": "0.75rem",
+            "space-sm": "0.5rem",
+            "space-lg": "1.25rem",
+            "gutter": "1rem"
+          },
+          "fontFamily": {
+            "headline-lg": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "title-md": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "headline-md": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "label-md": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "label-lg": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "display-lg": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "body-md": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "headline-lg-mobile": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "body-lg": ["Noto Sans Arabic", "Plus Jakarta Sans"],
+            "financial-numeral": ["Plus Jakarta Sans", "Noto Sans Arabic"]
+          },
+          "fontSize": {
+            "headline-lg": ["26px", { "lineHeight": "36px", "fontWeight": "700" }],
+            "title-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+            "headline-md": ["19px", { "lineHeight": "28px", "fontWeight": "600" }],
+            "label-md": ["11px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+            "label-lg": ["13px", { "lineHeight": "18px", "fontWeight": "600" }],
+            "display-lg": ["36px", { "lineHeight": "46px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+            "headline-lg-mobile": ["22px", { "lineHeight": "30px", "fontWeight": "700" }],
+            "body-lg": ["15px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "financial-numeral": ["24px", { "lineHeight": "30px", "fontWeight": "700" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      font-family: 'Noto Sans Arabic', 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+
+    /* Subtle scanning pulse animation */
+    @keyframes laser-sweep {
+      0% { top: 6%; opacity: 0.8; }
+      50% { opacity: 1; }
+      100% { top: 92%; opacity: 0.8; }
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, #316760 25%, #68dca9 50%, #316760 75%, transparent 100%);
+      box-shadow: 0 0 14px 2px #68dca9;
+      animation: laser-sweep 2.8s ease-in-out infinite alternate;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-inverse-surface text-surface-container-lowest min-h-screen antialiased flex justify-center selection:bg-primary-container selection:text-surface-container-lowest">
+<!-- Mobile Simulator Container (4-column grid constraint & persistent margins) -->
+<div class="w-full max-w-md bg-inverse-surface min-h-screen flex flex-col relative overflow-hidden shadow-2xl">
+<!-- Top Floating Header Bar (Task focused - Back action overrides global nav shell) -->
+<header class="relative z-30 flex items-center justify-between px-margin-mobile pt-space-lg pb-space-md bg-gradient-to-b from-inverse-surface/90 to-transparent backdrop-blur-md">
+<!-- Right side: Close / Back Navigation -->
+<button aria-label="الرجوع" class="w-10 h-10 rounded-full bg-surface-container-lowest/10 backdrop-blur-md text-surface-container-lowest flex items-center justify-center active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<!-- Center: Screen Title & Sub-badge -->
+<div class="flex flex-col items-center">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim animate-pulse"></span>
+<h1 class="text-headline-md font-headline-md text-surface-container-lowest tracking-tight">مسح وإرفاق الإيصال</h1>
+</div>
+<span class="text-label-md font-label-md text-inverse-primary/80 mt-0.5">AG-Cash • التدقيق الذكي الفوري</span>
+</div>
+<!-- Left side: Flashlight & Help Guidelines Tools -->
+<div class="flex items-center gap-2">
+<!-- Flash button toggle -->
+<button aria-label="التحكم بالفلاش" class="w-10 h-10 rounded-full bg-surface-container-lowest/10 backdrop-blur-md text-surface-container-lowest flex items-center justify-center active:scale-95 transition-all hover:bg-surface-container-lowest/20" id="flashToggleBtn" type="button">
+<span class="material-symbols-outlined" data-icon="flash_auto" id="flashIcon">flash_auto</span>
+</button>
+<!-- Guide instructions info modal trigger -->
+<button aria-label="إرشادات التصوير" class="w-10 h-10 rounded-full bg-surface-container-lowest/10 backdrop-blur-md text-surface-container-lowest flex items-center justify-center active:scale-95 transition-all hover:bg-surface-container-lowest/20" type="button">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+</button>
+</div>
+</header>
+<!-- Camera Viewfinder & Scanner Section -->
+<main class="relative flex-1 flex flex-col justify-between overflow-hidden px-margin-mobile">
+<!-- Mock Camera Feed Simulation (Simulating high resolution camera canvas with realistic document image) -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover brightness-[0.78] contrast-105" data-alt="A top-down realistic POV camera view of an Arabic Saudi tax invoice receipt lying flat on an industrial corporate office desk with corporate blueprints and a hardhat softly blurred in the background. The lighting is crisp and natural, highlighting the paper texture, clean QR code, petroleum-green subtle tones, and clear Arabic financial typography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAEwcJlNDLhj3sThojpwGLq9gVYw5FAtaHWUexvjc2qV4MqcV0ZKfzN7uWiAJvk-5wBNJue4B9AkyyecDNeHGBwbkKFBUbiwEZYAuXmzjV1XJR8XUzHlvLe_jwCqdJVECs8Ohbr-ZkJpUyCql2SsEn9Wwsle9hzftFF4Bq4i5k1VNAwzBHL_mEptYM7pAqqfpZmk0mNXDICuHKnuwten1nXkcEko60gB4jexbyn7-EzyVGg7YF8UqA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-inverse-surface via-transparent to-inverse-surface/60"></div>
+</div>
+<!-- Top Detection Status Pill (High contrast recognition badge) -->
+<div class="relative z-20 mt-space-sm flex justify-center">
+<div class="inline-flex items-center gap-2 px-space-md py-1.5 rounded-full bg-tertiary-container/90 backdrop-blur-md border border-tertiary-fixed-dim/40 shadow-lg text-tertiary-fixed">
+<span class="material-symbols-outlined text-[18px] text-tertiary-fixed-dim" data-icon="verified">verified</span>
+<span class="text-label-lg font-label-lg text-surface-container-lowest">تم اكتشاف الفاتورة الضريبية تلقائياً بنجاح ✓</span>
+</div>
+</div>
+<!-- Smart Bounding Box Overlay (Document Edge Detection & Alignment) -->
+<div class="relative z-10 mx-auto my-auto w-full max-w-[320px] aspect-[1/1.42] flex flex-col justify-between p-3">
+<!-- Laser Scanning Line -->
+<div class="scan-line"></div>
+<!-- 4 Augmented Reality Green Corner Brackets -->
+<!-- Top-Right (RTL Lead) -->
+<div class="absolute -top-1 -right-1 w-9 h-9 border-t-4 border-r-4 border-on-tertiary-container rounded-tr-lg shadow-sm"></div>
+<!-- Top-Left -->
+<div class="absolute -top-1 -left-1 w-9 h-9 border-t-4 border-l-4 border-on-tertiary-container rounded-tl-lg shadow-sm"></div>
+<!-- Bottom-Right -->
+<div class="absolute -bottom-1 -right-1 w-9 h-9 border-b-4 border-r-4 border-on-tertiary-container rounded-br-lg shadow-sm"></div>
+<!-- Bottom-Left -->
+<div class="absolute -bottom-1 -left-1 w-9 h-9 border-b-4 border-l-4 border-on-tertiary-container rounded-bl-lg shadow-sm"></div>
+<!-- Detected QR Code Anchor Visualizer inside receipt -->
+<div class="absolute bottom-5 right-5 w-14 h-14 border border-dashed border-tertiary-fixed-dim bg-tertiary/30 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary-fixed text-[20px]" data-icon="qr_code_scanner">qr_code_scanner</span>
+</div>
+<!-- Subtle Crosshair in Center -->
+<div class="m-auto w-8 h-8 flex items-center justify-center opacity-40 text-surface-container-lowest">
+<span class="material-symbols-outlined text-2xl" data-icon="filter_center_focus">filter_center_focus</span>
+</div>
+<!-- Grid Lines for Alignment -->
+<div class="absolute inset-0 border border-surface-container-lowest/20 rounded-lg pointer-events-none grid grid-cols-3 grid-rows-3">
+<div class="border-b border-r border-surface-container-lowest/10"></div>
+<div class="border-b border-r border-surface-container-lowest/10"></div>
+<div class="border-b border-surface-container-lowest/10"></div>
+<div class="border-b border-r border-surface-container-lowest/10"></div>
+<div class="border-b border-r border-surface-container-lowest/10"></div>
+<div class="border-b border-surface-container-lowest/10"></div>
+<div class="border-r border-surface-container-lowest/10"></div>
+<div class="border-r border-surface-container-lowest/10"></div>
+<div></div>
+</div>
+</div>
+<!-- Field Prompt Guidance Toast -->
+<div class="relative z-20 mb-space-sm flex justify-center">
+<div class="max-w-[340px] px-space-md py-2 rounded-xl bg-inverse-surface/85 backdrop-blur-md border border-outline-variant/20 shadow-md text-center">
+<p class="text-body-md font-body-md text-surface-container-lowest flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-[19px] text-inverse-primary" data-icon="center_focus_strong">center_focus_strong</span>
+<span>وجّه الكاميرا نحو الفاتورة بالكامل وتأكد من وضوح الـ QR والمبلغ</span>
+</p>
+</div>
+</div>
+</main>
+<!-- Bottom Controls & OCR Quick Preview Section -->
+<section class="relative z-30 bg-surface-container-lowest text-on-surface rounded-t-[28px] shadow-[0_-8px_30px_rgba(0,0,0,0.35)] px-margin-mobile pt-4 pb-6 transition-all duration-300">
+<!-- Drag pill indicator -->
+<div class="w-12 h-1 bg-outline-variant/60 rounded-full mx-auto mb-3"></div>
+<!-- Instant OCR Extracted Card (Bento FinTech Ledger Style) -->
+<div class="mb-4 bg-surface-container-low rounded-xl p-3 border border-outline-variant/30 flex items-center justify-between gap-3 shadow-sm">
+<!-- Extracted Item Data (Right-aligned in RTL) -->
+<div class="flex items-center gap-3">
+<!-- Thumbnail with crop marker -->
+<div class="relative w-12 h-14 rounded-lg overflow-hidden border border-outline/30 flex-shrink-0 bg-surface-dim">
+<img class="w-full h-full object-cover" data-alt="A macro close-up of a printed thermal petrol filling receipt in Saudi Arabia showing clean Arabic text with green stamp verification and barcode." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLSCpMKHocgYw8oIpP1bkpMpIr3JevJfdvnqGqnp2kjCbcOmlSFuAfOAOGxPXYQERALamD4CAchevlGDvthq8GsZKkkdTi9mkWR-_pgPEteK6e1P051tK3BAMS47AzdS1KPXdxoYE1TnLlpnnTGQ3jGF1iIarP2vQUuAKvLq2uWKvGb0Z2DvrRMvmXz5dw8aoBcby6kqGWgkUsXnch5cdwcc0-ClZAgwFIjRmYVLjQIEYJhIKfQxA"/>
+<div class="absolute bottom-0 inset-x-0 bg-primary-container text-[8px] text-center text-surface-container-lowest font-bold py-0.5">
+              ممسوح
+            </div>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-title-md font-title-md text-on-surface font-bold">محطة وقود الدريس</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-label-md font-label-md bg-tertiary-fixed text-on-tertiary-fixed-variant">
+                دقة 98%
+              </span>
+</div>
+<div class="flex items-center gap-2 mt-0.5 text-label-lg font-label-lg text-secondary">
+<span class="material-symbols-outlined text-[15px] text-primary" data-icon="local_gas_station">local_gas_station</span>
+<span>بند: وقود ونقليات ميدانية</span>
+<span>•</span>
+<span class="font-financial-numeral text-xs">اليوم 14:32</span>
+</div>
+</div>
+</div>
+<!-- Extracted Amount Highlight (Tabular Figures) -->
+<div class="text-left flex flex-col items-end">
+<div class="text-label-md font-label-md text-secondary">المبلغ المستخرج</div>
+<div class="font-financial-numeral text-headline-md font-bold text-primary flex items-baseline gap-1" dir="ltr">
+<span class="text-label-lg text-secondary">SAR</span>
+<span>345.00</span>
+</div>
+</div>
+</div>
+<!-- Quick Document Enhancement Actions (Crop, Adjust Contrast, Retake) -->
+<div class="grid grid-cols-3 gap-2 mb-4">
+<button class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-surface hover:bg-surface-container border border-outline-variant/30 text-on-surface active:scale-95 transition-transform text-label-lg font-label-lg" type="button">
+<span class="material-symbols-outlined text-[18px] text-primary" data-icon="crop">crop</span>
+<span>قص الحواف</span>
+</button>
+<button class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-surface hover:bg-surface-container border border-outline-variant/30 text-on-surface active:scale-95 transition-transform text-label-lg font-label-lg" type="button">
+<span class="material-symbols-outlined text-[18px] text-primary" data-icon="tune">tune</span>
+<span>ضبط التباين</span>
+</button>
+<button class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-error-container/60 hover:bg-error-container border border-error/20 text-error active:scale-95 transition-transform text-label-lg font-label-lg" type="button">
+<span class="material-symbols-outlined text-[18px]" data-icon="replay">replay</span>
+<span>إعادة المسح</span>
+</button>
+</div>
+<!-- Camera Triggers and Upload Controls Layout -->
+<div class="flex items-center justify-between px-2 pt-1 mb-3">
+<!-- Upload from Gallery / Files (PDF, JPG) -->
+<div class="flex flex-col items-center">
+<button aria-label="رفع من معرض الصور" class="w-12 h-12 rounded-full bg-surface-container hover:bg-surface-dim text-primary flex items-center justify-center active:scale-95 transition-all shadow-sm border border-outline-variant/30" type="button">
+<span class="material-symbols-outlined text-[24px]" data-icon="photo_library">photo_library</span>
+</button>
+<span class="text-label-md font-label-md text-secondary mt-1">المعرض / PDF</span>
+</div>
+<!-- Big Primary Shutter Button (Petroleum Teal with outer active ring) -->
+<div class="relative flex items-center justify-center">
+<div class="absolute w-[82px] h-[82px] rounded-full border-2 border-primary-container/40 animate-ping opacity-25 pointer-events-none"></div>
+<button aria-label="التقاط الفاتورة" class="w-[74px] h-[74px] rounded-full bg-surface-container-lowest border-4 border-primary-container p-1 shadow-lg active:scale-90 transition-transform flex items-center justify-center group" id="captureShutterBtn" type="button">
+<div class="w-full h-full rounded-full bg-primary-container group-hover:bg-primary transition-colors flex items-center justify-center shadow-inner">
+<span class="material-symbols-outlined text-surface-container-lowest text-[32px]" data-icon="photo_camera">photo_camera</span>
+</div>
+</button>
+</div>
+<!-- Flip Camera Lens Front/Back -->
+<div class="flex flex-col items-center">
+<button aria-label="تبديل الكاميرا" class="w-12 h-12 rounded-full bg-surface-container hover:bg-surface-dim text-primary flex items-center justify-center active:scale-95 transition-all shadow-sm border border-outline-variant/30" id="flipCameraBtn" type="button">
+<span class="material-symbols-outlined text-[24px]" data-icon="flip_camera_ios">flip_camera_ios</span>
+</button>
+<span class="text-label-md font-label-md text-secondary mt-1">قلب العدسة</span>
+</div>
+</div>
+<!-- Primary Confirmation Executive Action Button -->
+<button class="w-full py-3.5 px-space-md rounded-xl bg-primary-container hover:bg-primary text-surface-container-lowest font-headline-md text-headline-md flex items-center justify-center gap-2 shadow-md active:scale-[0.99] transition-all" type="button">
+<span class="material-symbols-outlined text-[22px]" data-icon="check_circle">check_circle</span>
+<span>تأكيد واستخدام الإيصال في المصروف</span>
+<span class="material-symbols-outlined text-[18px] mr-1 rotate-180" data-icon="arrow_right_alt">arrow_right_alt</span>
+</button>
+<!-- Security / GCC VAT Compliance Trust Footer -->
+<div class="mt-2.5 flex items-center justify-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined text-[14px] text-tertiary" data-icon="shield">shield</span>
+<span class="text-[11px] leading-tight text-on-surface-variant font-label-md">معتمد ومتوافق مع متطلبات الفاتورة الإلكترونية لهيئة الزكاة والضريبة والجمارك (ZATCA)</span>
+</div>
+</section>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+    // Flash Toggle Simulation
+    const flashBtn = document.getElementById('flashToggleBtn');
+    const flashIcon = document.getElementById('flashIcon');
+    const flashStates = ['flash_auto', 'flash_on', 'flash_off'];
+    let currentFlashIndex = 0;
+
+    flashBtn.addEventListener('click', () => {
+      currentFlashIndex = (currentFlashIndex + 1) % flashStates.length;
+      flashIcon.textContent = flashStates[currentFlashIndex];
+      flashIcon.setAttribute('data-icon', flashStates[currentFlashIndex]);
+      
+      // Haptic visual tap feedback
+      flashBtn.classList.add('bg-primary-container', 'text-surface-container-lowest');
+      setTimeout(() => {
+        flashBtn.classList.remove('bg-primary-container', 'text-surface-container-lowest');
+      }, 200);
+    });
+
+    // Shutter Trigger Animation
+    const shutterBtn = document.getElementById('captureShutterBtn');
+    shutterBtn.addEventListener('click', () => {
+      // Screen Flash Effect
+      const flashOverlay = document.createElement('div');
+      flashOverlay.className = 'absolute inset-0 bg-white z-50 transition-opacity duration-200 pointer-events-none opacity-90';
+      document.body.appendChild(flashOverlay);
+      
+      setTimeout(() => {
+        flashOverlay.classList.replace('opacity-90', 'opacity-0');
+        setTimeout(() => flashOverlay.remove(), 200);
+      }, 80);
+    });
+
+    // Flip Camera Feedback
+    const flipBtn = document.getElementById('flipCameraBtn');
+    let rotated = 0;
+    flipBtn.addEventListener('click', () => {
+      rotated += 180;
+      flipBtn.querySelector('span').style.transform = `rotate(${rotated}deg)`;
+      flipBtn.querySelector('span').style.transition = 'transform 0.4s ease';
+    });
+  </script>
+</body></html>
