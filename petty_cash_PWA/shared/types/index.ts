@@ -1,0 +1,142 @@
+// Shared types for AG-Cash application
+
+export enum RequestType {
+  EXPENSE = 'EXPENSE',
+  ADVANCE = 'ADVANCE',
+}
+
+export enum RequestStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  PAID = 'PAID',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum AdvanceStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  DISBURSED = 'DISBURSED',
+  SETTLED = 'SETTLED',
+  CANCELLED = 'CANCELLED',
+}
+
+export interface UserMapping {
+  id: string;
+  agCashUserId: string;
+  odooEmployeeId?: number;
+  odooEmployeeName?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Request {
+  id: string;
+  userId: string;
+  odooRequestId?: number;
+  type: RequestType;
+  amount: number;
+  description: string;
+  status: RequestStatus;
+  submittedAt?: Date;
+  approvedAt?: Date;
+  rejectedAt?: Date;
+  approvedBy?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  expenses?: Expense[];
+}
+
+export interface Expense {
+  id: string;
+  requestId: string;
+  categoryId?: number;
+  vendorId?: number;
+  amount: number;
+  description: string;
+  receiptUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Advance {
+  id: string;
+  userId: string;
+  odooAdvanceId?: number;
+  amount: number;
+  purpose: string;
+  expectedReturnDate?: Date;
+  disbursementDate?: Date;
+  settlementDate?: Date;
+  status: AdvanceStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Vendor {
+  id: string;
+  odooVendorId: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Category {
+  id: string;
+  odooCategoryId: number;
+  name: string;
+  nameAr?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateRequestDto {
+  type: RequestType;
+  amount: number;
+  description: string;
+  expenses: Omit<Expense, 'id' | 'requestId' | 'createdAt' | 'updatedAt'>[];
+}
+
+export interface UpdateRequestDto {
+  amount?: number;
+  description?: string;
+  expenses?: Omit<Expense, 'id' | 'requestId' | 'createdAt' | 'updatedAt'>[];
+}
+
+export interface CreateAdvanceDto {
+  amount: number;
+  purpose: string;
+  expectedReturnDate?: Date;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    message: string;
+    code?: string;
+  };
+  timestamp: Date;
+}
+
+export interface PaginationParams {
+  page: number;
+  limit: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
