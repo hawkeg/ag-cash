@@ -1,6 +1,9 @@
 import React from 'react'
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Dashboard from './pages/Dashboard'
+import Requests from './pages/Requests'
+import CreateRequest from './pages/CreateRequest'
 
 // Create theme with corporate fintech design
 const theme = createTheme({
@@ -78,7 +81,9 @@ function App() {
       <CssBaseline />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<div>AG-Cash Dashboard</div>} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/requests" element={<Requests />} />
+          <Route path="/create-request" element={<CreateRequest />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
