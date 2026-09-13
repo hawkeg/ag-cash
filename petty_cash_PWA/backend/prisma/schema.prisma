@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User mapping table - maps AG-Cash users to Odoo employees
+model UserMapping {
+  id                String   @id @default(uuid())
+  agCashUserId      String   @unique // Supabase user ID
+  odooEmployeeId    Int?     // Odoo employee ID
+  odooEmployeeName  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("user_mappings")
+}
+
+// Petty cash requests
+model Request {
+  id              String         @id @default(uuid())
+  userId          String         // AG-Cash user ID
+  odooRequestId  Int?           // Odoo request ID
+  type            RequestType    @default(EXPENSE)
+  amount          Float
+  description     String
+  status          RequestStatus  @default(DRAFT)
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  approvedBy      String?
+  rejectedBy      String?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  expenses        Expense[]
+
+  @@map("requests")
+}
+
+// Expense lines within a request
+model Expense {
+  id          String        @id @default(uuid())
+  requestId   String
+  categoryId  Int?          // Odoo category ID
+  vendorId    Int?          // Odoo vendor ID
+  amount      Float
+  description String
+  receiptUrl  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  request     Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+// Dedicated advances
+model Advance {
+  id                String         @id @default(uuid())
+  userId            String
+  odooAdvanceId     Int?
+  amount            Float
+  purpose           String
+  expectedReturnDate DateTime?
+  disbursementDate  DateTime?
+  settlementDate    DateTime?
+  status            AdvanceStatus  @default(PENDING)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@map("advances")
+}
+
+// Vendors
+model Vendor {
+  id          String   @id @default(uuid())
+  odooVendorId Int    @unique
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("vendors")
+}
+
+// Categories
+model Category {
+  id            String   @id @default(uuid())
+  odooCategoryId Int    @unique
+  name          String
+  nameAr        String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("categories")
+}
+
+// Enums
+enum RequestType {
+  EXPENSE
+  ADVANCE
+}
+
+enum RequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+  CANCELLED
+}
+
+enum AdvanceStatus {
+  PENDING
+  APPROVED
+  DISBURSED
+  SETTLED
+  CANCELLED
+}
