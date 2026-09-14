@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Container,
@@ -48,7 +48,7 @@ import {
   CreateRequestDto,
   Expense 
 } from '@shared/types'
-import { requestsAPI } from '../services/api'
+import { requestsAPI, expensesAPI } from '../services/api'
 
 interface ExpenseLine {
   id: string
@@ -68,12 +68,21 @@ interface CreateRequestProps {
 }
 
 const CreateRequest: React.FC<CreateRequestProps> = ({
-  categories = [],
+  categories: categoriesProp,
   onSubmit,
   onSaveDraft,
   loading = false,
 }) => {
   const navigate = useNavigate()
+  const [categories, setCategories] = useState<Category[]>(categoriesProp ?? [])
+  const holderName = localStorage.getItem('userName') || ''
+
+  useEffect(() => {
+    if (categoriesProp && categoriesProp.length) return
+    expensesAPI.getCategories()
+      .then((res) => setCategories(res.data ?? []))
+      .catch(() => {})
+  }, [])
   const [requestDescription, setRequestDescription] = useState('')
   const [expenseLines, setExpenseLines] = useState<ExpenseLine[]>([])
   const [currentExpense, setCurrentExpense] = useState<ExpenseLine>({
@@ -94,6 +103,8 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
 
     if (!requestDescription.trim()) {
       newErrors.requestDescription = 'الرجاء إدخال وصف الطلب'
+    } else if (requestDescription.trim().length < 5) {
+      newErrors.requestDescription = 'وصف الطلب يجب أن يكون 5 أحرف على الأقل'
     }
 
     if (expenseLines.length === 0) {
@@ -109,6 +120,8 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
 
     if (!expense.description.trim()) {
       newErrors.description = 'الرجاء إدخال وصف البند'
+    } else if (expense.description.trim().length < 5) {
+      newErrors.description = 'وصف البند يجب أن يكون 5 أحرف على الأقل'
     }
 
     if (!expense.categoryId) {
@@ -119,9 +132,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       newErrors.amount = 'الرجاء إدخال مبلغ صحيح'
     }
 
-    if (!expense.receiptUrl) {
-      newErrors.receiptUrl = 'الرجاء إرفاق إيصال الدفع'
-    }
+    // Receipt attachment is optional until camera/gallery upload is implemented
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -199,22 +210,37 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
         type: RequestType.EXPENSE,
         amount: calculateTotals().total,
         description: requestDescription,
+        submit: !isDraft,
         expenses: expenseLines.map((line) => ({
           categoryId: line.categoryId,
           amount: line.amount,
           description: line.description,
           receiptUrl: line.receiptUrl,
-        })),
+          ...(line.vendorName ? { notes: `المورد: ${line.vendorName}` } : {}),
+        } as any)),
       }
 
       if (isDraft) {
-        await onSaveDraft(requestDto)
-      } else {
+        if (onSaveDraft) {
+          await onSaveDraft(requestDto)
+          return
+        }
+      } else if (onSubmit) {
         await onSubmit(requestDto)
+        return
       }
-    } catch (error) {
+
+      const res = await requestsAPI.create(requestDto)
+      if (res.success && res.data) {
+        navigate(`/requests/${res.data.id}`)
+        return
+      }
+      throw new Error(res.error?.message || 'Failed to create request')
+    } catch (error: any) {
       console.error('Error submitting request:', error)
-      setErrors({ submit: 'حدث خطأ أثناء إرسال الطلب' })
+      setErrors({
+        submit: error?.response?.data?.error?.message || error?.message || 'حدث خطأ أثناء إرسال الطلب',
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -248,7 +274,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
             طلب صرف عهدة جديد
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            مسودة رقم: #EXP-2024-089
+            طلب جديد — يتم إنشاء الرقم تلقائياً في Odoo
           </Typography>
         </Box>
         <Button
@@ -320,10 +346,10 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     fontWeight: 'bold',
                     fontSize: '0.75rem'
                   }}>
-                    أم
+                    {holderName ? holderName.replace(/\[.*?\]/g, '').trim().charAt(0) : '؟'}
                   </Box>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    أحمد المنصور
+                    {holderName || 'صاحب العهدة'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" sx={{ mr: 'auto' }}>
                     (محدد تلقائياً)

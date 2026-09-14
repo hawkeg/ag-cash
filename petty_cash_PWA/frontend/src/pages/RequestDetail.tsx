@@ -54,20 +54,6 @@ interface RequestDetailProps {
   // Placeholder for future props like API service
 }
 
-// Mock request data for development
-const mockRequest: Request = {
-  id: '1',
-  userId: 'user1',
-  odooRequestId: 1024,
-  type: 'EXPENSE' as any,
-  amount: 2450.00,
-  description: 'مصاريف تشغيلية للموقع الشمالي',
-  status: RequestStatus.SUBMITTED,
-  submittedAt: new Date('2026-09-10'),
-  createdAt: new Date('2026-09-10'),
-  updatedAt: new Date('2026-09-10'),
-}
-
 interface TimelineStep {
   id: string
   title: string
@@ -123,7 +109,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
 
-  const [request, setRequest] = useState<Request | null>(mockRequest)
+  const [request, setRequest] = useState<Request | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [timeline] = useState<TimelineStep[]>(mockTimeline)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)

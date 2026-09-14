@@ -125,6 +125,14 @@ export const expensesAPI = {
     const response = await api.get<ApiResponse<Expense[]>>(`/api/expenses/request/${requestId}`);
     return response.data;
   },
+  getCategories: async () => {
+    const response = await api.get<ApiResponse<any[]>>('/api/expenses/categories');
+    return response.data;
+  },
+  getVendors: async (search?: string) => {
+    const response = await api.get<ApiResponse<any[]>>('/api/expenses/vendors', { params: { search } });
+    return response.data;
+  },
 };
 
 // Advances API

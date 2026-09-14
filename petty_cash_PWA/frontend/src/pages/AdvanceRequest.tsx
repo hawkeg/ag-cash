@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { CreateAdvanceDto } from '@shared/types'
+import { advancesAPI } from '../services/api'
 
 enum AdvanceType {
   TRAVEL = 'TRAVEL',
@@ -124,14 +125,18 @@ const AdvanceRequest: React.FC<AdvanceRequestProps> = ({
       if (onSubmit) {
         await onSubmit(advanceDto)
       } else {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        console.log('Advance request submitted:', advanceDto)
-        navigate('/requests')
+        const res = await advancesAPI.create(advanceDto)
+        if (res.success) {
+          navigate('/')
+          return
+        }
+        throw new Error(res.error?.message || 'Failed to create advance request')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting advance request:', error)
-      setErrors({ submit: 'حدث خطأ أثناء إرسال الطلب' })
+      setErrors({
+        submit: error?.response?.data?.error?.message || error?.message || 'حدث خطأ أثناء إرسال الطلب',
+      })
     } finally {
       setIsSubmitting(false)
     }

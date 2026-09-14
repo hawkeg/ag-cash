@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -46,6 +46,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AuthUser } from '@shared/types';
 import { authAPI } from '../services/api';
+import api from '../services/api';
 
 interface UserProfile extends AuthUser {
   name?: string;
@@ -63,15 +64,31 @@ const Profile: React.FC = () => {
   const isRtl = theme.direction === 'rtl';
   const navigate = useNavigate();
 
-  // Mock user data - in production, this would come from authAPI.getCurrentUser()
-  const [user] = useState<UserProfile>({
-    id: '1',
-    email: 'a.almansour@agoc.com.sa',
-    name: 'عبدالله المنصور',
-    employeeId: 'EMP-1042',
-    department: 'إدارة الصيانة الميدانية',
+  // Real user data from the Odoo holder session
+  const [user, setUser] = useState<UserProfile>({
+    id: localStorage.getItem('userId') || '',
+    email: '',
+    name: localStorage.getItem('userName') || 'صاحب العهدة',
+    employeeId: '',
+    department: '',
     role: 'أمين عهدة',
   });
+
+  useEffect(() => {
+    api.get('/api/dashboard')
+      .then((res) => {
+        const h = res.data?.data?.holder;
+        if (h) {
+          setUser((u) => ({
+            ...u,
+            name: h.employeeName || u.name,
+            employeeId: h.name || '',
+            department: h.department || '',
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Settings state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -150,7 +167,10 @@ const Profile: React.FC = () => {
       console.error('Logout error:', error);
     } finally {
       localStorage.removeItem('token');
-      navigate('/');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('holderId');
+      navigate('/login');
     }
   };
 

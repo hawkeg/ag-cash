@@ -101,6 +101,8 @@ export interface CreateRequestDto {
   type: RequestType;
   amount: number;
   description: string;
+  submit?: boolean;
+  dedicatedRequestId?: number;
   expenses: Omit<Expense, 'id' | 'requestId' | 'createdAt' | 'updatedAt'>[];
 }
 
