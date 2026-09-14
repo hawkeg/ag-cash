@@ -63,6 +63,10 @@ interface ExpenseLine {
   vendorName?: string
   amount: number
   hasVAT: boolean
+  invoiceDate?: string
+  vendorVat?: string
+  vendorCr?: string
+  ocrDocumentId?: number
   receiptUrl?: string
   receiptFile?: string
   receiptFilename?: string
@@ -317,6 +321,11 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
               vendorName: prev.vendorName || d.vendorName || '',
               amount: prev.amount > 0 ? prev.amount : d.amount || prev.amount,
               categoryId: prev.categoryId ?? d.categoryId,
+              invoiceDate: prev.invoiceDate || d.invoiceDate || undefined,
+              vendorVat: prev.vendorVat || d.vendorVat || undefined,
+              vendorCr: prev.vendorCr || d.vendorCr || undefined,
+              ocrDocumentId: d.documentId,
+              hasVAT: d.taxAmount ? true : prev.hasVAT,
             }))
           })
           .catch(() => {})
@@ -415,16 +424,16 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
           vendorId: line.vendorId,
           amount: line.amount,
           description: line.description,
+          invoiceDate: line.invoiceDate,
+          vendorVat: line.vendorVat,
+          vendorCr: line.vendorCr,
+          withVat: line.hasVAT,
+          ocrDocumentId: line.ocrDocumentId,
           receiptUrl: line.receiptUrl,
           receiptFile: line.receiptFile,
           receiptFilename: line.receiptFilename,
-          ...((line.vendorName && !line.vendorId) || line.latitude
-            ? {
-                notes: [
-                  line.vendorName && !line.vendorId ? `المورد: ${line.vendorName}` : '',
-                  line.latitude ? `الموقع: ${line.latitude},${line.longitude}` : '',
-                ].filter(Boolean).join(' | '),
-              }
+          ...(line.latitude
+            ? { notes: `الموقع: ${line.latitude},${line.longitude}` }
             : {}),
         } as any)),
       }
@@ -867,7 +876,12 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     }}
                     onChange={async (_e, value) => {
                       if (value && typeof value !== 'string') {
-                        setCurrentExpense({ ...currentExpense, vendorId: value.id, vendorName: value.name })
+                        setCurrentExpense({
+                          ...currentExpense,
+                          vendorId: value.id,
+                          vendorName: value.name,
+                          vendorVat: currentExpense.vendorVat || value.vat || undefined,
+                        })
                       }
                     }}
                     renderInput={(params) => (
@@ -934,6 +948,49 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     </Box>
                   </Box>
                 </Paper>
+
+                {/* Invoice details (auto-filled by OCR) */}
+                <Grid container spacing={1}>
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      تاريخ الفاتورة
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="date"
+                      value={currentExpense.invoiceDate || ''}
+                      onChange={(e) => setCurrentExpense({ ...currentExpense, invoiceDate: e.target.value })}
+                      InputLabelProps={{ shrink: true }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      الرقم الضريبي للمورد (VAT)
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="3xxxxxxxxxxxxx"
+                      value={currentExpense.vendorVat || ''}
+                      onChange={(e) => setCurrentExpense({ ...currentExpense, vendorVat: e.target.value })}
+                      InputProps={{ sx: { fontFamily: 'Inter', textAlign: 'left' } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      السجل التجاري (CR)
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="10xxxxxxxx"
+                      value={currentExpense.vendorCr || ''}
+                      onChange={(e) => setCurrentExpense({ ...currentExpense, vendorCr: e.target.value })}
+                      InputProps={{ sx: { fontFamily: 'Inter', textAlign: 'left' } }}
+                    />
+                  </Grid>
+                </Grid>
 
                 {/* Receipt Upload */}
                 <Box>

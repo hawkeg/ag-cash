@@ -90,7 +90,9 @@ const createRequestSchema = Joi.object({
       notes: Joi.string().optional(),
       receiptUrl: Joi.string().optional(),
       receiptFile: Joi.string().optional(),
-      receiptFilename: Joi.string().optional()
+      receiptFilename: Joi.string().optional(),
+      withVat: Joi.boolean().optional(),
+      ocrDocumentId: Joi.number().integer().optional()
     })
   ).optional()
 });
@@ -110,7 +112,9 @@ const updateRequestSchema = Joi.object({
       notes: Joi.string().optional(),
       receiptUrl: Joi.string().optional(),
       receiptFile: Joi.string().optional(),
-      receiptFilename: Joi.string().optional()
+      receiptFilename: Joi.string().optional(),
+      withVat: Joi.boolean().optional(),
+      ocrDocumentId: Joi.number().integer().optional()
     })
   ).optional()
 });
@@ -203,6 +207,59 @@ router.get('/:id', asyncHandler(async (req: ExpressRequest, res: Response) => {
   res.status(200).json(response);
 }));
 
+// Fetch category tax_ids so VAT lines get proper taxes (onchange doesn't
+// fire over XML-RPC — we must set tax_ids explicitly)
+const getCategoryTaxMap = async (auth: any, categoryIds: number[]) => {
+  const map = new Map<number, number[]>();
+  const ids = [...new Set(categoryIds.filter(Boolean))];
+  if (!ids.length) return map;
+  try {
+    const rows = await search_read(auth, {
+      model: 'ems.petty.expense.category',
+      domain: [['id', 'in', ids]],
+      fields: ['id', 'tax_ids'],
+    });
+    rows.forEach((c: any) => map.set(c.id, c.tax_ids || []));
+  } catch (e) {
+    logger.warn('Could not fetch category tax_ids:', e);
+  }
+  return map;
+};
+
+const buildLineVals = (exp: any, catTaxMap: Map<number, number[]>) => ({
+  name: exp.description,
+  amount: exp.amount,
+  category_id: exp.categoryId || false,
+  partner_id: exp.vendorId || false,
+  invoice_date: exp.invoiceDate || false,
+  vendor_vat: exp.vendorVat || false,
+  vendor_cr: exp.vendorCr || false,
+  notes: exp.notes || false,
+  receipt_file: exp.receiptFile || false,
+  receipt_filename: exp.receiptFilename || false,
+  with_vat: !!exp.withVat,
+  ...(exp.withVat && exp.categoryId && catTaxMap.get(exp.categoryId)?.length
+    ? { tax_ids: [[6, 0, catTaxMap.get(exp.categoryId)]] }
+    : {}),
+});
+
+// Link ems.petty.invoice.document records created by OCR scans to the new
+// request and their matching expense lines
+const linkOcrDocuments = async (auth: any, expenses: any[], requestId: number, lineIds: number[]) => {
+  const docs = expenses
+    .map((exp, i) => ({ docId: exp.ocrDocumentId, lineId: lineIds[i] }))
+    .filter((d) => d.docId);
+  for (const d of docs) {
+    try {
+      const data: Record<string, any> = { request_id: requestId };
+      if (d.lineId) data.expense_line_id = d.lineId;
+      await odooWrite(auth, { model: 'ems.petty.invoice.document', ids: [d.docId], data });
+    } catch (e) {
+      logger.warn(`Could not link OCR document ${d.docId}:`, e);
+    }
+  }
+};
+
 // Create new request in Odoo
 router.post('/', validate(createRequestSchema), asyncHandler(async (req: ExpressRequest, res: Response) => {
   const holderId = getHolderId(req);
@@ -210,33 +267,35 @@ router.post('/', validate(createRequestSchema), asyncHandler(async (req: Express
 
   const { description, expenses, submit, dedicatedRequestId } = req.body;
 
+  const auth = await odooAuthenticate();
+  const catTaxMap = await getCategoryTaxMap(auth, (expenses || []).map((e: any) => e.categoryId));
+
   const data: Record<string, any> = {
     holder_id: holderId,
     description,
   };
   if (dedicatedRequestId) data.dedicated_request_id = dedicatedRequestId;
   if (expenses?.length) {
-    data.line_ids = expenses.map((exp: any) => [0, 0, {
-      name: exp.description,
-      amount: exp.amount,
-      category_id: exp.categoryId || false,
-      partner_id: exp.vendorId || false,
-      invoice_date: exp.invoiceDate || false,
-      vendor_vat: exp.vendorVat || false,
-      vendor_cr: exp.vendorCr || false,
-      notes: exp.notes || false,
-      receipt_file: exp.receiptFile || false,
-      receipt_filename: exp.receiptFilename || false,
-    }]);
+    data.line_ids = expenses.map((exp: any) => [0, 0, buildLineVals(exp, catTaxMap)]);
   }
 
-  const auth = await odooAuthenticate();
   let newId: number;
   try {
     newId = await odooCreate(auth, { model: ODOO_MODEL, data });
   } catch (e: any) {
     logger.error('Odoo create request failed:', e);
     return errorResponse(res, 502, `Odoo create failed: ${e.message}`, 'ODOO_ERROR');
+  }
+
+  // Link OCR invoice documents to the request + their expense lines
+  if (expenses?.some((e: any) => e.ocrDocumentId)) {
+    const created = await search_read(auth, {
+      model: ODOO_MODEL,
+      domain: [['id', '=', newId]],
+      fields: ['line_ids'],
+      limit: 1,
+    });
+    await linkOcrDocuments(auth, expenses, newId, created[0]?.line_ids || []);
   }
 
   if (submit) {
@@ -288,22 +347,21 @@ router.put('/:id', validate(updateRequestSchema), asyncHandler(async (req: Expre
   const data: Record<string, any> = {};
   if (description !== undefined) data.description = description;
   if (expenses !== undefined) {
-    data.line_ids = [[5, 0, 0], ...expenses.map((exp: any) => [0, 0, {
-      name: exp.description,
-      amount: exp.amount,
-      category_id: exp.categoryId || false,
-      partner_id: exp.vendorId || false,
-      invoice_date: exp.invoiceDate || false,
-      vendor_vat: exp.vendorVat || false,
-      vendor_cr: exp.vendorCr || false,
-      notes: exp.notes || false,
-      receipt_file: exp.receiptFile || false,
-      receipt_filename: exp.receiptFilename || false,
-    }])];
+    const catTaxMap = await getCategoryTaxMap(auth, expenses.map((e: any) => e.categoryId));
+    data.line_ids = [[5, 0, 0], ...expenses.map((exp: any) => [0, 0, buildLineVals(exp, catTaxMap)])];
   }
 
   try {
     if (Object.keys(data).length) await odooWrite(auth, { model: ODOO_MODEL, ids: [id], data });
+    if (expenses?.some((e: any) => e.ocrDocumentId)) {
+      const created = await search_read(auth, {
+        model: ODOO_MODEL,
+        domain: [['id', '=', id]],
+        fields: ['line_ids'],
+        limit: 1,
+      });
+      await linkOcrDocuments(auth, expenses, id, created[0]?.line_ids || []);
+    }
     if (submit) await execute_kw(auth, ODOO_MODEL, 'action_submit', [[id]]);
   } catch (e: any) {
     logger.error(`Odoo update request ${id} failed:`, e);

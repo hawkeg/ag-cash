@@ -59,7 +59,9 @@ const createExpenseSchema = Joi.object({
   notes: Joi.string().optional(),
   receiptUrl: Joi.string().optional(),
   receiptFile: Joi.string().optional(),
-  receiptFilename: Joi.string().optional()
+  receiptFilename: Joi.string().optional(),
+  withVat: Joi.boolean().optional(),
+  ocrDocumentId: Joi.number().integer().optional()
 });
 
 const updateExpenseSchema = Joi.object({
@@ -73,7 +75,8 @@ const updateExpenseSchema = Joi.object({
   notes: Joi.string().optional(),
   receiptUrl: Joi.string().optional(),
   receiptFile: Joi.string().optional(),
-  receiptFilename: Joi.string().optional()
+  receiptFilename: Joi.string().optional(),
+  withVat: Joi.boolean().optional()
 });
 
 // Translated fields can come back as {en_US: '...'} maps via XML-RPC
@@ -378,6 +381,15 @@ router.post('/', validate(createExpenseSchema), asyncHandler(async (req: Request
     return errorResponse(res, 400, 'Can only add expenses to draft requests', 'INVALID_STATUS');
   }
 
+  // Resolve category tax_ids — onchange doesn't fire over XML-RPC
+  let taxIds: number[] = [];
+  if (req.body.withVat && categoryId) {
+    const cats = await search_read(auth, {
+      model: CATEGORY_MODEL, domain: [['id', '=', categoryId]], fields: ['tax_ids'], limit: 1,
+    });
+    taxIds = cats[0]?.tax_ids || [];
+  }
+
   try {
     const newId = await odooCreate(auth, {
       model: LINE_MODEL,
@@ -393,6 +405,8 @@ router.post('/', validate(createExpenseSchema), asyncHandler(async (req: Request
         notes: notes || false,
         receipt_file: req.body.receiptFile || false,
         receipt_filename: req.body.receiptFilename || false,
+        with_vat: !!req.body.withVat,
+        ...(taxIds.length ? { tax_ids: [[6, 0, taxIds]] } : {}),
       },
     });
 
@@ -423,7 +437,7 @@ router.put('/:id', validate(updateExpenseSchema), asyncHandler(async (req: Reque
   const rows = await search_read(auth, {
     model: LINE_MODEL,
     domain: [['id', '=', id], ['holder_id', '=', holderId]],
-    fields: ['id', 'request_id'],
+    fields: ['id', 'request_id', 'category_id'],
     limit: 1,
   });
   if (!rows.length) return errorResponse(res, 404, 'Expense not found', 'EXPENSE_NOT_FOUND');
@@ -441,6 +455,16 @@ router.put('/:id', validate(updateExpenseSchema), asyncHandler(async (req: Reque
   if (receiptFile !== undefined) {
     data.receipt_file = receiptFile || false;
     data.receipt_filename = receiptFilename || false;
+  }
+  if (req.body.withVat !== undefined) {
+    data.with_vat = !!req.body.withVat;
+    if (req.body.withVat && (categoryId ?? rows[0]?.category_id)) {
+      const catId = categoryId ?? (Array.isArray(rows[0].category_id) ? rows[0].category_id[0] : rows[0].category_id);
+      const cats = await search_read(auth, {
+        model: CATEGORY_MODEL, domain: [['id', '=', catId]], fields: ['tax_ids'], limit: 1,
+      });
+      if (cats[0]?.tax_ids?.length) data.tax_ids = [[6, 0, cats[0].tax_ids]];
+    }
   }
 
   try {
@@ -570,6 +594,7 @@ router.post('/ocr', validate(ocrUploadSchema), asyncHandler(async (req: Request,
       vendorName: result.vendor_name || undefined,
       vendorId: Array.isArray(result.vendor_partner_id) ? result.vendor_partner_id[0] : undefined,
       vendorVat: result.vendor_tax_id || undefined,
+      vendorCr: result.vendor_commercial_reg || undefined,
       invoiceNumber: result.invoice_number || undefined,
       invoiceDate: result.invoice_date || undefined,
       amount: result.total_amount || undefined,
