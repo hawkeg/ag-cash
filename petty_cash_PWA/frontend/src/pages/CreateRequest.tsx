@@ -237,53 +237,29 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
   const { subtotal, vat, total } = calculateTotals()
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      bgcolor: 'background.default',
-      pb: 10,
-      direction: 'rtl'
-    }}>
-      {/* Header */}
-      <Paper 
-        elevation={1}
-        sx={{ 
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          borderRadius: 0,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Container maxWidth="md" sx={{ py: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconButton>
-                <ArrowForward sx={{ transform: 'rotate(180deg)' }} />
-              </IconButton>
-              <Box>
-                <Typography variant="h6" sx={{ fontFamily: 'Cairo' }}>
-                  طلب صرف عهدة جديد
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  مسودة رقم: #EXP-2024-089
-                </Typography>
-              </Box>
-            </Box>
-            <Button
-              variant="outlined"
-              startIcon={<Save />}
-              onClick={() => handleSubmit(true)}
-              disabled={isSubmitting}
-              size="small"
-            >
-              حفظ مسودة
-            </Button>
-          </Box>
-        </Container>
-      </Paper>
+    <Box>
+      {/* Page Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 600, fontFamily: 'Cairo' }}>
+            طلب صرف عهدة جديد
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            مسودة رقم: #EXP-2024-089
+          </Typography>
+        </Box>
+        <Button
+          variant="outlined"
+          startIcon={<Save />}
+          onClick={() => handleSubmit(true)}
+          disabled={isSubmitting}
+          size="small"
+        >
+          حفظ مسودة
+        </Button>
+      </Box>
 
-      <Container maxWidth="md" sx={{ py: 3 }}>
+      <Box sx={{ py: 2 }}>
         {/* General Info Card */}
         <Card elevation={1} sx={{ mb: 3 }}>
           <CardContent>
@@ -847,66 +823,56 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
             {errors.submit}
           </Alert>
         )}
-      </Container>
 
-      {/* Fixed Action Bar */}
-      <Paper 
-        elevation={3}
-        sx={{ 
-          position: 'fixed',
+        {/* Action Buttons */}
+        <Box sx={{ 
+          display: 'flex', 
+          gap: 2, 
+          mt: 3,
+          position: 'sticky',
           bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 50,
-          borderRadius: 0,
+          bgcolor: 'background.paper',
+          py: 2,
           borderTop: 1,
-          borderColor: 'divider'
-        }}
-      >
-        <Container maxWidth="md">
-          <Box sx={{ 
-            height: 80, 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 2 
-          }}>
-            <Button
-              variant="outlined"
-              onClick={() => handleSubmit(true)}
-              disabled={isSubmitting}
-              sx={{ 
-                width: '33%',
-                height: 48,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
-              }}
-              startIcon={<Drafts />}
-            >
-              حفظ كمسودة
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => handleSubmit(false)}
-              disabled={isSubmitting || loading}
-              sx={{ 
-                width: '67%',
-                height: 48,
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 1
-              }}
-              startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <Send />}
-            >
-              {isSubmitting ? 'جاري الإرسال...' : 'إرسال للاعتماد والموافقة'}
-            </Button>
-          </Box>
-        </Container>
-      </Paper>
+          borderColor: 'divider',
+          zIndex: 10
+        }}>
+          <Button
+            variant="outlined"
+            onClick={() => handleSubmit(true)}
+            disabled={isSubmitting}
+            sx={{ 
+              flex: 1,
+              height: 48,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1
+            }}
+            startIcon={<Drafts />}
+          >
+            حفظ كمسودة
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => handleSubmit(false)}
+            disabled={isSubmitting || loading}
+            sx={{ 
+              flex: 2,
+              height: 48,
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1
+            }}
+            startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <Send />}
+          >
+            {isSubmitting ? 'جاري الإرسال...' : 'إرسال للاعتماد والموافقة'}
+          </Button>
+        </Box>
+      </Box>
     </Box>
   )
 }

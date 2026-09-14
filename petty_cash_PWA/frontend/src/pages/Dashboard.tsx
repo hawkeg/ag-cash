@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Card,
@@ -23,7 +23,6 @@ import {
   RequestQuote,
   PendingActions,
   TrendingUp,
-  Notifications,
   Refresh,
   MoreVert,
   Add,
@@ -40,13 +39,13 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<DashboardStats>({
+  const [stats] = useState<DashboardStats>({
     totalBalance: 5000,
     pendingRequests: 3,
     totalRequestsThisMonth: 12,
     totalSpentThisMonth: 3250,
   });
-  const [recentRequests, setRecentRequests] = useState<Request[]>([
+  const [recentRequests] = useState<Request[]>([
     {
       id: '1',
       userId: 'user1',
@@ -63,7 +62,7 @@ const Dashboard: React.FC = () => {
       type: 'EXPENSE' as any,
       amount: 750,
       description: 'Client meeting expenses',
-      status: RequestStatus.PENDING,
+      status: RequestStatus.SUBMITTED,
       createdAt: new Date('2026-09-12'),
       updatedAt: new Date('2026-09-12'),
     },
@@ -90,7 +89,6 @@ const Dashboard: React.FC = () => {
     switch (status) {
       case RequestStatus.APPROVED:
         return 'success';
-      case RequestStatus.PENDING:
       case RequestStatus.SUBMITTED:
         return 'warning';
       case RequestStatus.REJECTED:
@@ -115,20 +113,16 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 2 }}>
-      {/* Header */}
+    <Box>
+      {/* Page Title */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
           لوحة التحكم
         </Typography>
         <Stack direction="row" spacing={1}>
           <IconButton>
-            <Notifications />
-          </IconButton>
-          <IconButton>
             <Refresh />
           </IconButton>
-          <Avatar sx={{ bgcolor: '#235b54' }}>أ</Avatar>
         </Stack>
       </Box>
 
@@ -267,13 +261,16 @@ const Dashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Buttons */}
       <Box
         sx={{
           position: 'fixed',
           bottom: 80,
           right: 16,
           zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
         }}
       >
         <Button
@@ -288,7 +285,21 @@ const Dashboard: React.FC = () => {
             py: 1.5,
           }}
         >
-          طلب جديد
+          طلب صرف
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={<AccountBalanceWallet />}
+          onClick={() => navigate('/advance-request')}
+          sx={{
+            bgcolor: '#006a4e',
+            '&:hover': { bgcolor: '#004d38' },
+            borderRadius: 2,
+            px: 3,
+            py: 1.5,
+          }}
+        >
+          سلفة
         </Button>
       </Box>
     </Box>

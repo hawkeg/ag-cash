@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Box,
-  Container,
   Typography,
   TextField,
   Chip,
@@ -25,23 +25,18 @@ import {
   FilterList as FilterIcon,
   SwapVert as SortIcon,
   Add as AddIcon,
-  Notifications as NotificationsIcon,
-  Description as DescriptionIcon,
-  Dashboard as DashboardIcon,
-  History as HistoryIcon,
-  Person as PersonIcon,
   Pending as PendingIcon,
-  CheckCircle as CheckCircleIcon,
   Verified as VerifiedIcon,
   EditDocument as EditDocumentIcon,
   DoneAll as DoneAllIcon,
   Info as InfoIcon,
   Edit as EditIcon,
-  ReceiptLong as ReceiptLongIcon,
-  AttachFile as AttachFileIcon,
-  Receipt as ReceiptIcon,
   Close as CloseIcon,
   Refresh as RefreshIcon,
+  Dashboard as DashboardIcon,
+  Description as DescriptionIcon,
+  History as HistoryIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material'
 import { Request, RequestStatus } from '../../../shared/types'
 
@@ -140,6 +135,7 @@ const mockRequests: Request[] = [
 ]
 
 const Requests: React.FC<RequestsProps> = () => {
+  const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const isRtl = theme.direction === 'rtl'
@@ -312,10 +308,9 @@ const Requests: React.FC<RequestsProps> = () => {
     }).format(amount)
   }
 
-  // Handle request card click (placeholder for navigation)
+  // Handle request card click (navigate to detail page)
   const handleRequestClick = (request: Request) => {
-    console.log('Navigate to request detail:', request.id)
-    // TODO: Navigate to request detail page
+    navigate(`/requests/${request.id}`)
   }
 
   // Handle new request click (placeholder)
@@ -663,9 +658,9 @@ const Requests: React.FC<RequestsProps> = () => {
                     {/* Draft Alert */}
                     {isDraft && (
                       <Box sx={{ mb: 2, pr: 1 }}>
-                        <Alert 
-                          severity="info" 
-                          sx={{ 
+                        <Alert
+                          severity="info"
+                          sx={{
                             bgcolor: alpha(theme.palette.warning.main, 0.1),
                             '& .MuiAlert-icon': { fontSize: 16 },
                           }}
@@ -801,46 +796,6 @@ const Requests: React.FC<RequestsProps> = () => {
           تم الصرف
         </MenuItem>
       </Menu>
-
-      {/* Bottom Navigation (Mobile Only) */}
-      {isMobile && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            bgcolor: 'background.paper',
-            borderTop: 1,
-            borderColor: 'divider',
-            display: 'flex',
-            justifyContent: 'space-around',
-            py: 1,
-            zIndex: 50,
-          }}
-        >
-          <IconButton sx={{ flexDirection: 'column' }}>
-            <DashboardIcon />
-            <Typography variant="caption">الرئيسية</Typography>
-          </IconButton>
-          <IconButton sx={{ flexDirection: 'column', color: theme.palette.primary.main }}>
-            <DescriptionIcon />
-            <Typography variant="caption" sx={{ color: theme.palette.primary.main }}>الطلبات</Typography>
-          </IconButton>
-          <IconButton sx={{ flexDirection: 'column' }}>
-            <AddIcon />
-            <Typography variant="caption">طلب جديد</Typography>
-          </IconButton>
-          <IconButton sx={{ flexDirection: 'column' }}>
-            <HistoryIcon />
-            <Typography variant="caption">السجل</Typography>
-          </IconButton>
-          <IconButton sx={{ flexDirection: 'column' }}>
-            <PersonIcon />
-            <Typography variant="caption">حسابي</Typography>
-          </IconButton>
-        </Box>
-      )}
     </Box>
   )
 }

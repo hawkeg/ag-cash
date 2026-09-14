@@ -1,9 +1,12 @@
-import React from 'react'
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Requests from './pages/Requests'
 import CreateRequest from './pages/CreateRequest'
+import RequestDetail from './pages/RequestDetail'
+import Reports from './pages/Reports'
+import AdvanceRequest from './pages/AdvanceRequest'
 
 // Create theme with corporate fintech design
 const theme = createTheme({
@@ -81,9 +84,35 @@ function App() {
       <CssBaseline />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/requests" element={<Requests />} />
-          <Route path="/create-request" element={<CreateRequest />} />
+          <Route path="/" element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          } />
+          <Route path="/requests" element={
+            <Layout>
+              <Requests />
+            </Layout>
+          } />
+          <Route path="/create-request" element={
+            <Layout>
+              <CreateRequest 
+                categories={[]}
+                onSubmit={async () => {}}
+                onSaveDraft={async () => {}}
+              />
+            </Layout>
+          } />
+          <Route path="/requests/:id" element={
+            <Layout>
+              <RequestDetail />
+            </Layout>
+          } />
+          <Route path="/advance-request" element={
+            <Layout>
+              <AdvanceRequest />
+            </Layout>
+          } />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
