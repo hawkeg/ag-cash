@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Container,
@@ -60,6 +60,8 @@ interface ExpenseLine {
   amount: number
   hasVAT: boolean
   receiptUrl?: string
+  receiptFile?: string
+  receiptFilename?: string
 }
 
 interface VendorOption {
@@ -224,17 +226,41 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
     }
   }
 
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+
   const handleCameraCapture = () => {
-    // Placeholder for camera integration
-    console.log('Camera capture - to be implemented')
-    // In a real implementation, this would open the camera
-    // and capture the receipt image
+    cameraInputRef.current?.click()
   }
 
   const handleGalleryUpload = () => {
-    // Placeholder for gallery upload
-    console.log('Gallery upload - to be implemented')
-    // In a real implementation, this would open the file picker
+    galleryInputRef.current?.click()
+  }
+
+  const handleReceiptFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, receiptUrl: 'حجم الملف يتجاوز 5 ميجابايت' }))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      setCurrentExpense((prev) => ({
+        ...prev,
+        receiptUrl: dataUrl,
+        receiptFile: dataUrl.split(',')[1],
+        receiptFilename: file.name,
+      }))
+      setErrors((prev) => {
+        const next = { ...prev }
+        delete next.receiptUrl
+        return next
+      })
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   const calculateTotals = () => {
@@ -266,6 +292,8 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
           amount: line.amount,
           description: line.description,
           receiptUrl: line.receiptUrl,
+          receiptFile: line.receiptFile,
+          receiptFilename: line.receiptFilename,
           ...(line.vendorName && !line.vendorId ? { notes: `المورد: ${line.vendorName}` } : {}),
         } as any)),
       }
@@ -567,7 +595,11 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                             alignItems: 'center',
                             justifyContent: 'center'
                           }}>
-                            <Check fontSize="small" color="primary" />
+                            {expense.receiptUrl.startsWith('data:image') ? (
+                              <img src={expense.receiptUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <Check fontSize="small" color="primary" />
+                            )}
                           </Box>
                           <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Check fontSize="inherit" color="primary" />
@@ -843,6 +875,40 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                       </Button>
                     </Grid>
                   </Grid>
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ display: 'none' }}
+                    onChange={handleReceiptFile}
+                  />
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    style={{ display: 'none' }}
+                    onChange={handleReceiptFile}
+                  />
+                  {currentExpense.receiptUrl && (
+                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        component="img"
+                        src={currentExpense.receiptUrl}
+                        alt="receipt"
+                        sx={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 1, border: 1, borderColor: 'divider' }}
+                      />
+                      <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 180 }}>
+                        {currentExpense.receiptFilename}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={() => setCurrentExpense((prev) => ({ ...prev, receiptUrl: undefined, receiptFile: undefined, receiptFilename: undefined }))}
+                      >
+                        <Delete fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  )}
                   {errors.receiptUrl && (
                     <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
                       {errors.receiptUrl}

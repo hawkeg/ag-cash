@@ -20,7 +20,7 @@ const PARTNER_MODEL = 'res.partner';
 const LINE_FIELDS = [
   'id', 'request_id', 'holder_id', 'name', 'amount', 'amount_total',
   'category_id', 'partner_id', 'invoice_date', 'vendor_vat', 'vendor_cr',
-  'notes', 'create_date', 'write_date',
+  'notes', 'receipt_file', 'receipt_filename', 'create_date', 'write_date',
 ];
 
 const getHolderId = (req: Request): number | null =>
@@ -33,6 +33,9 @@ const mapLine = (l: any): Expense => ({
   vendorId: Array.isArray(l.partner_id) ? l.partner_id[0] : undefined,
   amount: l.amount_total ?? l.amount,
   description: l.name,
+  receiptUrl: l.receipt_file
+    ? `data:image/${(l.receipt_filename || 'jpg').split('.').pop()};base64,${l.receipt_file}`
+    : undefined,
   createdAt: l.create_date ? new Date(l.create_date) : new Date(),
   updatedAt: l.write_date ? new Date(l.write_date) : new Date(),
 });
@@ -54,7 +57,9 @@ const createExpenseSchema = Joi.object({
   vendorVat: Joi.string().optional(),
   vendorCr: Joi.string().optional(),
   notes: Joi.string().optional(),
-  receiptUrl: Joi.string().optional()
+  receiptUrl: Joi.string().optional(),
+  receiptFile: Joi.string().optional(),
+  receiptFilename: Joi.string().optional()
 });
 
 const updateExpenseSchema = Joi.object({
@@ -66,7 +71,9 @@ const updateExpenseSchema = Joi.object({
   vendorVat: Joi.string().optional(),
   vendorCr: Joi.string().optional(),
   notes: Joi.string().optional(),
-  receiptUrl: Joi.string().optional()
+  receiptUrl: Joi.string().optional(),
+  receiptFile: Joi.string().optional(),
+  receiptFilename: Joi.string().optional()
 });
 
 // Translated fields can come back as {en_US: '...'} maps via XML-RPC
@@ -384,6 +391,8 @@ router.post('/', validate(createExpenseSchema), asyncHandler(async (req: Request
         vendor_vat: vendorVat || false,
         vendor_cr: vendorCr || false,
         notes: notes || false,
+        receipt_file: req.body.receiptFile || false,
+        receipt_filename: req.body.receiptFilename || false,
       },
     });
 
@@ -419,7 +428,7 @@ router.put('/:id', validate(updateExpenseSchema), asyncHandler(async (req: Reque
   });
   if (!rows.length) return errorResponse(res, 404, 'Expense not found', 'EXPENSE_NOT_FOUND');
 
-  const { categoryId, vendorId, amount, description, invoiceDate, vendorVat, vendorCr, notes } = req.body;
+  const { categoryId, vendorId, amount, description, invoiceDate, vendorVat, vendorCr, notes, receiptFile, receiptFilename } = req.body;
   const data: Record<string, any> = {};
   if (categoryId !== undefined) data.category_id = categoryId || false;
   if (vendorId !== undefined) data.partner_id = vendorId || false;
@@ -429,6 +438,10 @@ router.put('/:id', validate(updateExpenseSchema), asyncHandler(async (req: Reque
   if (vendorVat !== undefined) data.vendor_vat = vendorVat || false;
   if (vendorCr !== undefined) data.vendor_cr = vendorCr || false;
   if (notes !== undefined) data.notes = notes || false;
+  if (receiptFile !== undefined) {
+    data.receipt_file = receiptFile || false;
+    data.receipt_filename = receiptFilename || false;
+  }
 
   try {
     if (Object.keys(data).length) await odooWrite(auth, { model: LINE_MODEL, ids: [id], data });

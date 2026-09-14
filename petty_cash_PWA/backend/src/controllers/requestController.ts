@@ -88,7 +88,9 @@ const createRequestSchema = Joi.object({
       vendorVat: Joi.string().optional(),
       vendorCr: Joi.string().optional(),
       notes: Joi.string().optional(),
-      receiptUrl: Joi.string().optional()
+      receiptUrl: Joi.string().optional(),
+      receiptFile: Joi.string().optional(),
+      receiptFilename: Joi.string().optional()
     })
   ).optional()
 });
@@ -106,7 +108,9 @@ const updateRequestSchema = Joi.object({
       vendorVat: Joi.string().optional(),
       vendorCr: Joi.string().optional(),
       notes: Joi.string().optional(),
-      receiptUrl: Joi.string().optional()
+      receiptUrl: Joi.string().optional(),
+      receiptFile: Joi.string().optional(),
+      receiptFilename: Joi.string().optional()
     })
   ).optional()
 });
@@ -177,7 +181,7 @@ router.get('/:id', asyncHandler(async (req: ExpressRequest, res: Response) => {
   const lines = await search_read(auth, {
     model: ODOO_LINE_MODEL,
     domain: [['request_id', '=', id]],
-    fields: ['id', 'name', 'amount', 'amount_total', 'category_id', 'partner_id', 'invoice_date', 'create_date', 'write_date'],
+    fields: ['id', 'name', 'amount', 'amount_total', 'category_id', 'partner_id', 'invoice_date', 'receipt_file', 'receipt_filename', 'create_date', 'write_date'],
     order: 'sequence, id',
   });
 
@@ -188,6 +192,9 @@ router.get('/:id', asyncHandler(async (req: ExpressRequest, res: Response) => {
     vendorId: Array.isArray(l.partner_id) ? l.partner_id[0] : undefined,
     amount: l.amount_total || l.amount,
     description: l.name,
+    receiptUrl: l.receipt_file
+      ? `data:image/${(l.receipt_filename || 'jpg').split('.').pop()};base64,${l.receipt_file}`
+      : undefined,
     createdAt: l.create_date ? new Date(l.create_date) : new Date(),
     updatedAt: l.write_date ? new Date(l.write_date) : new Date(),
   }));
@@ -218,6 +225,8 @@ router.post('/', validate(createRequestSchema), asyncHandler(async (req: Express
       vendor_vat: exp.vendorVat || false,
       vendor_cr: exp.vendorCr || false,
       notes: exp.notes || false,
+      receipt_file: exp.receiptFile || false,
+      receipt_filename: exp.receiptFilename || false,
     }]);
   }
 
@@ -288,6 +297,8 @@ router.put('/:id', validate(updateRequestSchema), asyncHandler(async (req: Expre
       vendor_vat: exp.vendorVat || false,
       vendor_cr: exp.vendorCr || false,
       notes: exp.notes || false,
+      receipt_file: exp.receiptFile || false,
+      receipt_filename: exp.receiptFilename || false,
     }])];
   }
 
