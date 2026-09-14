@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -17,6 +17,8 @@ import {
   Paper,
   Stack,
   Button,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   AccountBalanceWallet,
@@ -28,7 +30,8 @@ import {
   Add,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { Request, RequestStatus } from '@shared/types';
+import { Request, RequestStatus, AdvanceStatus } from '@shared/types';
+import { requestsAPI, expensesAPI, advancesAPI } from '../services/api';
 
 interface DashboardStats {
   totalBalance: number;
@@ -39,44 +42,78 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [stats] = useState<DashboardStats>({
-    totalBalance: 5000,
-    pendingRequests: 3,
-    totalRequestsThisMonth: 12,
-    totalSpentThisMonth: 3250,
+  const [stats, setStats] = useState<DashboardStats>({
+    totalBalance: 0,
+    pendingRequests: 0,
+    totalRequestsThisMonth: 0,
+    totalSpentThisMonth: 0,
   });
-  const [recentRequests] = useState<Request[]>([
-    {
-      id: '1',
-      userId: 'user1',
-      type: 'EXPENSE' as any,
-      amount: 500,
-      description: 'Office supplies',
-      status: RequestStatus.APPROVED,
-      createdAt: new Date('2026-09-13'),
-      updatedAt: new Date('2026-09-13'),
-    },
-    {
-      id: '2',
-      userId: 'user1',
-      type: 'EXPENSE' as any,
-      amount: 750,
-      description: 'Client meeting expenses',
-      status: RequestStatus.SUBMITTED,
-      createdAt: new Date('2026-09-12'),
-      updatedAt: new Date('2026-09-12'),
-    },
-    {
-      id: '3',
-      userId: 'user1',
-      type: 'ADVANCE' as any,
-      amount: 2000,
-      description: 'Travel advance',
-      status: RequestStatus.DRAFT,
-      createdAt: new Date('2026-09-11'),
-      updatedAt: new Date('2026-09-11'),
-    },
-  ]);
+  const [recentRequests, setRecentRequests] = useState<Request[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const [requestsRes, expensesRes, advancesRes] = await Promise.allSettled([
+        requestsAPI.getAll({ page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' }),
+        expensesAPI.getAll({ page: 1, limit: 100 }),
+        advancesAPI.getAll({ page: 1, limit: 100 }),
+      ]);
+
+      if (requestsRes.status === 'rejected') {
+        throw requestsRes.reason;
+      }
+
+      const allRequests = requestsRes.value.data?.data ?? [];
+      const allExpenses = expensesRes.status === 'fulfilled' ? expensesRes.value.data?.data ?? [] : [];
+      const allAdvances = advancesRes.status === 'fulfilled' ? advancesRes.value.data?.data ?? [] : [];
+
+      setRecentRequests(allRequests.slice(0, 5));
+
+      const now = new Date();
+      const isThisMonth = (date: Date | string) => {
+        const d = new Date(date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      };
+
+      const spentThisMonth = allExpenses
+        .filter((e) => isThisMonth(e.createdAt))
+        .reduce((sum, e) => sum + e.amount, 0);
+
+      const disbursedAdvances = allAdvances
+        .filter((a) => a.status === AdvanceStatus.DISBURSED || a.status === AdvanceStatus.SETTLED)
+        .reduce((sum, a) => sum + a.amount, 0);
+
+      setStats({
+        totalBalance: Math.max(0, disbursedAdvances - spentThisMonth),
+        pendingRequests: allRequests.filter((r) => r.status === RequestStatus.SUBMITTED).length,
+        totalRequestsThisMonth: allRequests.filter((r) => isThisMonth(r.createdAt)).length,
+        totalSpentThisMonth: spentThisMonth,
+      });
+    } catch (err: any) {
+      console.error('Failed to load dashboard data:', err);
+      setError(err?.response?.data?.error?.message || 'تعذر تحميل بيانات لوحة التحكم. تحقق من اتصال الخادم.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleRefresh = () => {
+    fetchDashboardData(true);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-SA', {
@@ -120,12 +157,28 @@ const Dashboard: React.FC = () => {
           لوحة التحكم
         </Typography>
         <Stack direction="row" spacing={1}>
-          <IconButton>
-            <Refresh />
+          <IconButton onClick={handleRefresh} disabled={loading || refreshing}>
+            {refreshing ? <CircularProgress size={20} /> : <Refresh />}
           </IconButton>
         </Stack>
       </Box>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {!loading && (
+      <>
       {/* Balance Card */}
       <Card sx={{ mb: 3, bgcolor: '#235b54', color: 'white' }}>
         <CardContent>
@@ -221,6 +274,13 @@ const Dashboard: React.FC = () => {
             </Button>
           </Box>
           <List>
+            {recentRequests.length === 0 && (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="body2" color="text.secondary">
+                  لا توجد طلبات حديثة
+                </Typography>
+              </Box>
+            )}
             {recentRequests.map((request) => (
               <React.Fragment key={request.id}>
                 <ListItem
@@ -260,6 +320,8 @@ const Dashboard: React.FC = () => {
           </List>
         </CardContent>
       </Card>
+      </>
+      )}
 
       {/* Floating Action Buttons */}
       <Box

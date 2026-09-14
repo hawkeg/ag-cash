@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Box,
@@ -48,43 +48,24 @@ import {
   Save as SaveIcon,
 } from '@mui/icons-material'
 import { Request, RequestStatus, Expense } from '../../../shared/types'
+import { requestsAPI, expensesAPI } from '../services/api'
 
 interface RequestDetailProps {
   // Placeholder for future props like API service
 }
 
-// Mock data for development
+// Mock request data for development
 const mockRequest: Request = {
   id: '1',
   userId: 'user1',
-  odooRequestId: 84,
+  odooRequestId: 1024,
   type: 'EXPENSE' as any,
-  amount: 540.00,
-  description: 'شراء مستلزمات مكتبية وأحبار طابعة',
+  amount: 2450.00,
+  description: 'مصاريف تشغيلية للموقع الشمالي',
   status: RequestStatus.SUBMITTED,
-  submittedAt: new Date('2025-05-14'),
-  createdAt: new Date('2025-05-14'),
-  updatedAt: new Date('2025-05-14'),
-  expenses: [
-    { 
-      id: 'e1', 
-      requestId: '1', 
-      amount: 350, 
-      description: 'وقود مركبة الشحن الميدانية',
-      receiptUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCdyvORWDO5cTheitgr_zpCrhMKlqDDZprQgEZ9nXkT2LDKEkRPtZVN70FB9eYTH-CNhU6Lzc9ZE7rWLLDCr_OHTvCU4aaWySdPy6J2wzhg5FcQeGHXX4_gqVR2ESuZAmUFtFjD-WDJlA3DCvryK-5bqZEXbxDLU4ZybBb6q02tV0Q4fgs1RZSPMMmaVoAEwQEwFadMlPFbAicyUV0ff4RrHcF_YcCtpf5IR0ZVZA',
-      createdAt: new Date(), 
-      updatedAt: new Date() 
-    },
-    { 
-      id: 'e2', 
-      requestId: '1', 
-      amount: 190, 
-      description: 'ضيافة اجتماع فريق الفحص',
-      receiptUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDsNGBiV69YJFLGA-f7k0ryxL3197560Yr-RyyjOCwOJpcH6AFaB5i9NkfQEkqj9zyeIzAolCB1vD6Tx2uoU_6fNx1Q4LcCxxJuDpx9_6kYeo-4Z9phAYL-4akHv0bqd9vKxoRtd1zuBgoygmXbK5SwrdExHP-HMi4o1MtTQpkH4aOagtav-zkUQjjOKD3R8TblV8mEg8gXQ3DtqH2LyfZneByBw90YJlDHhN5xRw',
-      createdAt: new Date(), 
-      updatedAt: new Date() 
-    },
-  ],
+  submittedAt: new Date('2026-09-10'),
+  createdAt: new Date('2026-09-10'),
+  updatedAt: new Date('2026-09-10'),
 }
 
 interface TimelineStep {
@@ -142,12 +123,52 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
 
-  const [request, setRequest] = useState<Request>(mockRequest)
+  const [request, setRequest] = useState<Request | null>(mockRequest)
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [timeline] = useState<TimelineStep[]>(mockTimeline)
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
+  const [pageLoading, setPageLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+
+  // Fetch the request and its expense lines from the API
+  useEffect(() => {
+    if (!id) {
+      setError('معرّف الطلب غير موجود')
+      setPageLoading(false)
+      return
+    }
+
+    const fetchRequest = async () => {
+      setPageLoading(true)
+      setError(null)
+      try {
+        const res = await requestsAPI.getById(id)
+        const fetchedRequest = res.data
+        if (!fetchedRequest) {
+          throw new Error('Request not found')
+        }
+        setRequest(fetchedRequest)
+
+        // Fetch related expense lines; fall back to expenses embedded in the request
+        try {
+          const expensesRes = await expensesAPI.getByRequestId(id)
+          setExpenses(expensesRes.data ?? fetchedRequest.expenses ?? [])
+        } catch {
+          setExpenses(fetchedRequest.expenses ?? [])
+        }
+      } catch (err: any) {
+        console.error('Failed to load request:', err)
+        setError(err?.response?.data?.error?.message || 'تعذر تحميل تفاصيل الطلب. تحقق من اتصال الخادم.')
+      } finally {
+        setPageLoading(false)
+      }
+    }
+
+    fetchRequest()
+  }, [id])
 
   // Status configuration
   const getStatusConfig = (status: RequestStatus) => {
@@ -245,6 +266,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
 
   // Handle share
   const handleShare = () => {
+    if (!request) return
     if (navigator.share) {
       navigator.share({
         title: `طلب مصروف #REQ-2025-${request.odooRequestId}`,
@@ -267,28 +289,48 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
   }
 
   // Handle cancel request
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (!request) return
     setCancelling(true)
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const res = await requestsAPI.updateStatus(request.id, RequestStatus.CANCELLED)
+      if (res.data) {
+        setRequest(res.data)
+      } else {
+        setRequest({ ...request, status: RequestStatus.CANCELLED })
+      }
+      alert('تم إلغاء الطلب بنجاح.')
+    } catch (err: any) {
+      console.error('Failed to cancel request:', err)
+      alert(err?.response?.data?.error?.message || 'تعذر إلغاء الطلب.')
+    } finally {
       setCancelling(false)
-      alert('تم سحب الطلب وتحويله إلى مسودة.')
-    }, 1000)
+    }
   }
 
   // Handle edit request (for draft status)
   const handleEdit = () => {
+    if (!request) return
     navigate(`/edit-request/${request.id}`)
   }
 
   // Handle submit request (for draft status)
-  const handleSubmit = () => {
-    // Simulate API call
+  const handleSubmit = async () => {
+    if (!request) return
     setLoading(true)
-    setTimeout(() => {
+    try {
+      const res = await requestsAPI.updateStatus(request.id, RequestStatus.SUBMITTED)
+      if (res.data) {
+        setRequest(res.data)
+      } else {
+        setRequest({ ...request, status: RequestStatus.SUBMITTED })
+      }
+    } catch (err: any) {
+      console.error('Failed to submit request:', err)
+      alert(err?.response?.data?.error?.message || 'تعذر إرسال الطلب.')
+    } finally {
       setLoading(false)
-      setRequest({ ...request, status: RequestStatus.SUBMITTED })
-    }, 1500)
+    }
   }
 
   // Open receipt modal
@@ -299,6 +341,48 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
   // Close receipt modal
   const closeReceiptModal = () => {
     setSelectedReceipt(null)
+  }
+
+  // Loading state
+  if (pageLoading) {
+    return (
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+          bgcolor: 'background.default',
+        }}
+      >
+        <CircularProgress />
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          جاري تحميل تفاصيل الطلب...
+        </Typography>
+      </Box>
+    )
+  }
+
+  // Error / not found state
+  if (error || !request) {
+    return (
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: 4 }}>
+        <Container maxWidth="md">
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error || 'الطلب غير موجود'}
+          </Alert>
+          <Button
+            startIcon={<ArrowBackIcon sx={{ transform: isRtl ? 'none' : 'rotate(180deg)' }} />}
+            onClick={handleBack}
+            variant="outlined"
+          >
+            العودة إلى الطلبات
+          </Button>
+        </Container>
+      </Box>
+    )
   }
 
   const statusConfig = getStatusConfig(request.status)
@@ -556,7 +640,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <ReceiptLongIcon sx={{ color: theme.palette.primary.main }} />
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  بنود المصروفات ({request.expenses?.length || 0})
+                  بنود المصروفات ({expenses.length})
                 </Typography>
               </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -565,7 +649,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
             </Box>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {request.expenses?.map((expense) => (
+              {expenses.map((expense) => (
                 <Box
                   key={expense.id}
                   sx={{
@@ -645,7 +729,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
             </Box>
 
             <Grid container spacing={2}>
-              {request.expenses?.filter(e => e.receiptUrl).map((expense, index) => (
+              {expenses.filter(e => e.receiptUrl).map((expense, index) => (
                 <Grid item xs={6} key={expense.id}>
                   <Box
                     onClick={() => openReceiptModal(expense.receiptUrl!, expense.description)}

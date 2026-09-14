@@ -11,12 +11,16 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add JWT token
+// Request interceptor to add JWT token and user ID
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      config.headers['x-user-id'] = userId;
     }
     return config;
   },

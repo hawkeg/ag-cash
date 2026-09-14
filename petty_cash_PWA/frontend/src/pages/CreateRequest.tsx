@@ -40,6 +40,7 @@ import {
   ExpandMore,
   Storefront,
 } from '@mui/icons-material'
+import { useNavigate } from 'react-router-dom'
 import { 
   RequestType, 
   RequestStatus, 
@@ -47,6 +48,7 @@ import {
   CreateRequestDto,
   Expense 
 } from '@shared/types'
+import { requestsAPI } from '../services/api'
 
 interface ExpenseLine {
   id: string
@@ -59,18 +61,19 @@ interface ExpenseLine {
 }
 
 interface CreateRequestProps {
-  categories: Category[]
-  onSubmit: (request: CreateRequestDto) => Promise<void>
-  onSaveDraft: (request: CreateRequestDto) => Promise<void>
+  categories?: Category[]
+  onSubmit?: (request: CreateRequestDto) => Promise<void>
+  onSaveDraft?: (request: CreateRequestDto) => Promise<void>
   loading?: boolean
 }
 
 const CreateRequest: React.FC<CreateRequestProps> = ({
-  categories,
+  categories = [],
   onSubmit,
   onSaveDraft,
   loading = false,
 }) => {
+  const navigate = useNavigate()
   const [requestDescription, setRequestDescription] = useState('')
   const [expenseLines, setExpenseLines] = useState<ExpenseLine[]>([])
   const [currentExpense, setCurrentExpense] = useState<ExpenseLine>({

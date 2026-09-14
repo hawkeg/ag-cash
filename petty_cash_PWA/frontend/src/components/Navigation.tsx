@@ -10,7 +10,8 @@ import {
   Dashboard as DashboardIcon,
   ReceiptLong as RequestsIcon,
   AddCircle as CreateIcon,
-  History as ReportsIcon,
+  History as HistoryIcon,
+  Assessment as ReportsIcon,
   Person as ProfileIcon,
 } from '@mui/icons-material'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -31,8 +32,9 @@ const Navigation: React.FC = () => {
     if (path === '/') return 0
     if (path === '/requests') return 1
     if (path === '/create-request') return 2
-    if (path === '/reports') return 3
-    if (path === '/profile') return 4
+    if (path === '/history') return 3
+    if (path === '/reports') return 4
+    if (path === '/profile') return 5
     return 0
   }
 
@@ -48,9 +50,12 @@ const Navigation: React.FC = () => {
         navigate('/create-request')
         break
       case 3:
-        navigate('/reports')
+        navigate('/history')
         break
       case 4:
+        navigate('/reports')
+        break
+      case 5:
         navigate('/profile')
         break
     }
@@ -98,6 +103,10 @@ const Navigation: React.FC = () => {
         <BottomNavigationAction
           label="طلب جديد"
           icon={<CreateIcon />}
+        />
+        <BottomNavigationAction
+          label="السجل"
+          icon={<HistoryIcon />}
         />
         <BottomNavigationAction
           label="التقارير"

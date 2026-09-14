@@ -7,6 +7,8 @@ import CreateRequest from './pages/CreateRequest'
 import RequestDetail from './pages/RequestDetail'
 import Reports from './pages/Reports'
 import AdvanceRequest from './pages/AdvanceRequest'
+import History from './pages/History'
+import Profile from './pages/Profile'
 
 // Create theme with corporate fintech design
 const theme = createTheme({
@@ -116,6 +118,16 @@ function App() {
           <Route path="/reports" element={
             <Layout>
               <Reports />
+            </Layout>
+          } />
+          <Route path="/history" element={
+            <Layout>
+              <History />
+            </Layout>
+          } />
+          <Route path="/profile" element={
+            <Layout>
+              <Profile />
             </Layout>
           } />
         </Routes>

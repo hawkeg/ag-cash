@@ -20,6 +20,8 @@ import {
   CircularProgress,
   Alert,
   Container,
+  Pagination,
+  Stack,
 } from '@mui/material'
 import {
   Search as SearchIcon,
@@ -40,8 +42,10 @@ import {
   AttachFile,
   Notifications,
   Edit as EditIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material'
-import { Request, RequestStatus } from '@shared/types'
+import { Request, RequestStatus, AdvanceStatus } from '@shared/types'
+import { requestsAPI, advancesAPI } from '../services/api'
 
 interface RequestsProps {
   // Placeholder for future props like API service
@@ -50,92 +54,7 @@ interface RequestsProps {
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'
 type StatusFilter = 'all' | RequestStatus
 
-// Mock data for development
-const mockRequests: Request[] = [
-  {
-    id: '1',
-    userId: 'user1',
-    odooRequestId: 84,
-    type: 'EXPENSE' as any,
-    amount: 540.00,
-    description: 'شراء مستلزمات مكتبية وأحبار طابعة',
-    status: RequestStatus.SUBMITTED,
-    submittedAt: new Date('2025-05-14'),
-    createdAt: new Date('2025-05-14'),
-    updatedAt: new Date('2025-05-14'),
-    expenses: [
-      { id: 'e1', requestId: '1', amount: 200, description: 'أحبار طابعة', createdAt: new Date(), updatedAt: new Date() },
-      { id: 'e2', requestId: '1', amount: 180, description: 'ورق A4', createdAt: new Date(), updatedAt: new Date() },
-      { id: 'e3', requestId: '1', amount: 160, description: 'أقلام', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '2',
-    userId: 'user1',
-    odooRequestId: 79,
-    type: 'EXPENSE' as any,
-    amount: 215.50,
-    description: 'وقود لسيارة الشركة ورسوم مواقف',
-    status: RequestStatus.PAID,
-    submittedAt: new Date('2025-05-12'),
-    approvedAt: new Date('2025-05-12'),
-    createdAt: new Date('2025-05-12'),
-    updatedAt: new Date('2025-05-12'),
-    expenses: [
-      { id: 'e4', requestId: '2', amount: 150, description: 'وقود', createdAt: new Date(), updatedAt: new Date() },
-      { id: 'e5', requestId: '2', amount: 65.50, description: 'مواقف', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '3',
-    userId: 'user1',
-    odooRequestId: 71,
-    type: 'EXPENSE' as any,
-    amount: 420.00,
-    description: 'ضيافة وفد زائر واستراحة قهوة',
-    status: RequestStatus.APPROVED,
-    submittedAt: new Date('2025-05-09'),
-    approvedAt: new Date('2025-05-10'),
-    approvedBy: 'manager1',
-    createdAt: new Date('2025-05-09'),
-    updatedAt: new Date('2025-05-10'),
-    expenses: [
-      { id: 'e6', requestId: '3', amount: 420, description: 'ضيافة', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '4',
-    userId: 'user1',
-    odooRequestId: 68,
-    type: 'EXPENSE' as any,
-    amount: 850.00,
-    description: 'صيانة طارئة لجهاز التكييف المكتبي',
-    status: RequestStatus.DRAFT,
-    createdAt: new Date('2025-05-04'),
-    updatedAt: new Date('2025-05-04'),
-    expenses: [
-      { id: 'e7', requestId: '4', amount: 850, description: 'صيانة تكييف', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '5',
-    userId: 'user1',
-    odooRequestId: 65,
-    type: 'EXPENSE' as any,
-    amount: 180.00,
-    description: 'شراء أجهزة حماية شخصية',
-    status: RequestStatus.REJECTED,
-    submittedAt: new Date('2025-05-02'),
-    rejectedAt: new Date('2025-05-03'),
-    rejectedBy: 'manager1',
-    rejectionReason: 'المبلغ يتجاوز الحد المسموح للصنف',
-    createdAt: new Date('2025-05-02'),
-    updatedAt: new Date('2025-05-03'),
-    expenses: [
-      { id: 'e8', requestId: '5', amount: 180, description: 'خوذات', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-]
+const PAGE_SIZE = 5
 
 const Requests: React.FC<RequestsProps> = () => {
   const navigate = useNavigate()
@@ -143,15 +62,67 @@ const Requests: React.FC<RequestsProps> = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const isRtl = theme.direction === 'rtl'
 
-  const [requests, setRequests] = useState<Request[]>(mockRequests)
-  const [filteredRequests, setFilteredRequests] = useState<Request[]>(mockRequests)
+  const [requests, setRequests] = useState<Request[]>([])
+  const [filteredRequests, setFilteredRequests] = useState<Request[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sortOption, setSortOption] = useState<SortOption>('date-desc')
   const [sortMenuAnchor, setSortMenuAnchor] = useState<null | HTMLElement>(null)
   const [filterMenuAnchor, setFilterMenuAnchor] = useState<null | HTMLElement>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [availableBalance, setAvailableBalance] = useState(0)
+
+  // Fetch requests from the API
+  const fetchRequests = async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
+      setError(null)
+
+      const [requestsRes, advancesRes] = await Promise.allSettled([
+        requestsAPI.getAll({ page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' }),
+        advancesAPI.getAll({ page: 1, limit: 100 }),
+      ])
+
+      if (requestsRes.status === 'rejected') {
+        throw requestsRes.reason
+      }
+
+      const fetchedRequests = requestsRes.value.data?.data ?? []
+      setRequests(fetchedRequests)
+      setTotal(requestsRes.value.data?.total ?? fetchedRequests.length)
+
+      // Compute available custody balance: disbursed advances minus paid requests
+      const advances = advancesRes.status === 'fulfilled' ? advancesRes.value.data?.data ?? [] : []
+      const disbursed = advances
+        .filter((a) => a.status === AdvanceStatus.DISBURSED || a.status === AdvanceStatus.SETTLED)
+        .reduce((sum, a) => sum + a.amount, 0)
+      const paidOut = fetchedRequests
+        .filter((r) => r.status === RequestStatus.PAID)
+        .reduce((sum, r) => sum + r.amount, 0)
+      setAvailableBalance(Math.max(0, disbursed - paidOut))
+    } catch (err: any) {
+      console.error('Failed to load requests:', err)
+      setError(err?.response?.data?.error?.message || 'تعذر تحميل الطلبات. تحقق من اتصال الخادم.')
+      setRequests([])
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  // Initial fetch
+  useEffect(() => {
+    fetchRequests()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Calculate status counts
   const statusCounts = {
@@ -165,6 +136,7 @@ const Requests: React.FC<RequestsProps> = () => {
 
   // Apply filters and search
   useEffect(() => {
+    setPage(1)
     let filtered = [...requests]
 
     // Apply status filter
@@ -200,12 +172,17 @@ const Requests: React.FC<RequestsProps> = () => {
     setFilteredRequests(filtered)
   }, [requests, statusFilter, searchQuery, sortOption])
 
+  // Client-side pagination over the filtered results
+  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / PAGE_SIZE))
+  const paginatedRequests = filteredRequests.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value)
+  }
+
   // Pull-to-refresh handler
   const handleRefresh = async () => {
-    setRefreshing(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setRefreshing(false)
+    await fetchRequests(true)
   }
 
   // Sort menu handlers
@@ -316,11 +293,26 @@ const Requests: React.FC<RequestsProps> = () => {
     navigate(`/requests/${request.id}`)
   }
 
-  // Handle new request click (placeholder)
+  // Handle new request click
   const handleNewRequest = () => {
-    console.log('Create new request')
-    // TODO: Navigate to new request form
+    navigate('/create-request')
   }
+
+  // Summary figures computed from fetched requests
+  const now = new Date()
+  const isThisMonth = (date: Date | string) => {
+    const d = new Date(date)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }
+  const monthExpensesTotal = requests
+    .filter((r) => isThisMonth(r.createdAt))
+    .reduce((sum, r) => sum + r.amount, 0)
+  const pendingAmount = requests
+    .filter((r) => r.status === RequestStatus.SUBMITTED)
+    .reduce((sum, r) => sum + r.amount, 0)
+  const approvedAmount = requests
+    .filter((r) => r.status === RequestStatus.APPROVED || r.status === RequestStatus.PAID)
+    .reduce((sum, r) => sum + r.amount, 0)
 
   return (
     <Box sx={{ 
@@ -406,6 +398,9 @@ const Requests: React.FC<RequestsProps> = () => {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
+            <IconButton onClick={handleRefresh} disabled={loading || refreshing}>
+              <RefreshIcon />
+            </IconButton>
             <IconButton onClick={handleFilterMenuOpen}>
               <FilterIcon />
             </IconButton>
@@ -414,6 +409,13 @@ const Requests: React.FC<RequestsProps> = () => {
             </IconButton>
           </Box>
         </Box>
+
+        {/* Error State */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
 
         {/* Search Input */}
         <Box sx={{ mb: 3 }}>
@@ -509,7 +511,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 إجمالي مصروفات الشهر
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5 }}>
-                <span className="number">2,025.50</span> ر.س
+                <span className="number">{formatAmount(monthExpensesTotal)}</span> ر.س
               </Typography>
             </Paper>
           </Grid>
@@ -519,7 +521,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 المطالبات المعلقة
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.warning.dark }}>
-                <span className="number">540.00</span> ر.س
+                <span className="number">{formatAmount(pendingAmount)}</span> ر.س
               </Typography>
             </Paper>
           </Grid>
@@ -529,7 +531,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 طلبات معتمدة
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.success.dark }}>
-                <span className="number">635.50</span> ر.س
+                <span className="number">{formatAmount(approvedAmount)}</span> ر.س
               </Typography>
             </Paper>
           </Grid>
@@ -539,7 +541,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 الرصيد المتاح بالعهدة
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.primary.main }}>
-                <span className="number">4,459.00</span> ر.س
+                <span className="number">{formatAmount(availableBalance)}</span> ر.س
               </Typography>
             </Paper>
           </Grid>
@@ -564,14 +566,14 @@ const Requests: React.FC<RequestsProps> = () => {
 
         {/* Requests List */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {filteredRequests.length === 0 ? (
+          {filteredRequests.length === 0 && !loading ? (
             <Box sx={{ textAlign: 'center', py: 8 }}>
               <Typography variant="body1" sx={{ color: 'text.secondary' }}>
                 لا توجد طلبات مطابقة للبحث
               </Typography>
             </Box>
           ) : (
-            filteredRequests.map((request) => {
+            paginatedRequests.map((request) => {
               const statusConfig = getStatusConfig(request.status)
               const isDraft = request.status === RequestStatus.DRAFT
 
@@ -734,6 +736,23 @@ const Requests: React.FC<RequestsProps> = () => {
             })
           )}
         </Box>
+
+        {/* Pagination */}
+        {!loading && filteredRequests.length > PAGE_SIZE && (
+          <Stack alignItems="center" sx={{ mt: 4 }}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+              shape="rounded"
+              siblingCount={1}
+            />
+            <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1 }}>
+              عرض {paginatedRequests.length} من {filteredRequests.length} طلب (الإجمالي: {total})
+            </Typography>
+          </Stack>
+        )}
       </Container>
 
       {/* Floating Action Button */}
