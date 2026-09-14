@@ -30,8 +30,8 @@ import {
   Add,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { Request, RequestStatus, AdvanceStatus } from '@shared/types';
-import { requestsAPI, expensesAPI, advancesAPI } from '../services/api';
+import { Request, RequestStatus } from '@shared/types';
+import api from '../services/api';
 
 interface DashboardStats {
   totalBalance: number;
@@ -49,6 +49,7 @@ const Dashboard: React.FC = () => {
     totalSpentThisMonth: 0,
   });
   const [recentRequests, setRecentRequests] = useState<Request[]>([]);
+  const [holder, setHolder] = useState<{ employeeName?: string; department?: string; name?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,41 +63,16 @@ const Dashboard: React.FC = () => {
       }
       setError(null);
 
-      const [requestsRes, expensesRes, advancesRes] = await Promise.allSettled([
-        requestsAPI.getAll({ page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' }),
-        expensesAPI.getAll({ page: 1, limit: 100 }),
-        advancesAPI.getAll({ page: 1, limit: 100 }),
-      ]);
+      const res = await api.get('/api/dashboard');
+      const payload = res.data?.data;
 
-      if (requestsRes.status === 'rejected') {
-        throw requestsRes.reason;
-      }
-
-      const allRequests = requestsRes.value.data?.data ?? [];
-      const allExpenses = expensesRes.status === 'fulfilled' ? expensesRes.value.data?.data ?? [] : [];
-      const allAdvances = advancesRes.status === 'fulfilled' ? advancesRes.value.data?.data ?? [] : [];
-
-      setRecentRequests(allRequests.slice(0, 5));
-
-      const now = new Date();
-      const isThisMonth = (date: Date | string) => {
-        const d = new Date(date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      };
-
-      const spentThisMonth = allExpenses
-        .filter((e) => isThisMonth(e.createdAt))
-        .reduce((sum, e) => sum + e.amount, 0);
-
-      const disbursedAdvances = allAdvances
-        .filter((a) => a.status === AdvanceStatus.DISBURSED || a.status === AdvanceStatus.SETTLED)
-        .reduce((sum, a) => sum + a.amount, 0);
-
+      setRecentRequests(payload?.recentRequests ?? []);
+      setHolder(payload?.holder ?? null);
       setStats({
-        totalBalance: Math.max(0, disbursedAdvances - spentThisMonth),
-        pendingRequests: allRequests.filter((r) => r.status === RequestStatus.SUBMITTED).length,
-        totalRequestsThisMonth: allRequests.filter((r) => isThisMonth(r.createdAt)).length,
-        totalSpentThisMonth: spentThisMonth,
+        totalBalance: payload?.stats?.totalBalance ?? 0,
+        pendingRequests: payload?.stats?.pendingRequests ?? 0,
+        totalRequestsThisMonth: payload?.stats?.totalRequestsThisMonth ?? 0,
+        totalSpentThisMonth: payload?.stats?.totalSpentThisMonth ?? 0,
       });
     } catch (err: any) {
       console.error('Failed to load dashboard data:', err);
@@ -182,6 +158,11 @@ const Dashboard: React.FC = () => {
       {/* Balance Card */}
       <Card sx={{ mb: 3, bgcolor: '#235b54', color: 'white' }}>
         <CardContent>
+          {holder && (
+            <Typography variant="caption" sx={{ opacity: 0.85, display: 'block', mb: 0.5 }}>
+              {holder.employeeName || holder.name}{holder.department ? ` — ${holder.department}` : ''}
+            </Typography>
+          )}
           <Typography variant="body2" sx={{ opacity: 0.9, mb: 1 }}>
             الرصيد المتاح
           </Typography>

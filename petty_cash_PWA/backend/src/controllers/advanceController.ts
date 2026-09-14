@@ -2,20 +2,81 @@ import { Router, Request, Response } from 'express';
 import Joi from 'joi';
 import { logger } from '../utils/logger';
 import { validate, asyncHandler } from '../middleware/validation';
-import { ApiResponse, Advance, AdvanceStatus, CreateAdvanceDto, PaginatedResponse } from '../types';
+import {
+  authenticate as odooAuthenticate,
+  search_read,
+  create as odooCreate,
+  write as odooWrite,
+  unlink as odooUnlink,
+  execute_kw,
+} from '../services/odoo';
+import { ApiResponse, Advance, AdvanceStatus, PaginatedResponse } from '../types';
 
 const router = Router();
 
-// Validation schemas
+const ODOO_MODEL = 'ems.petty.dedicated.request';
+const FIELDS = [
+  'id', 'name', 'holder_id', 'date', 'amount', 'reason', 'state',
+  'analytic_account_id', 'payment_journal_id', 'rejection_reason',
+  'settlement_request_id', 'create_date', 'write_date',
+];
+
+// Odoo state -> shared AdvanceStatus
+const odooToStatus: Record<string, AdvanceStatus> = {
+  draft: AdvanceStatus.PENDING,
+  submitted: AdvanceStatus.PENDING,
+  manager_approved: AdvanceStatus.APPROVED,
+  disbursed: AdvanceStatus.DISBURSED,
+  settled: AdvanceStatus.SETTLED,
+  rejected: AdvanceStatus.CANCELLED,
+  cancelled: AdvanceStatus.CANCELLED,
+};
+
+const statusToOdoo: Record<AdvanceStatus, string[]> = {
+  [AdvanceStatus.PENDING]: ['draft', 'submitted'],
+  [AdvanceStatus.APPROVED]: ['manager_approved'],
+  [AdvanceStatus.DISBURSED]: ['disbursed'],
+  [AdvanceStatus.SETTLED]: ['settled'],
+  [AdvanceStatus.CANCELLED]: ['rejected', 'cancelled'],
+};
+
+const statusToAction: Partial<Record<AdvanceStatus, string>> = {
+  [AdvanceStatus.PENDING]: 'action_submit',
+  [AdvanceStatus.SETTLED]: 'action_settle',
+  [AdvanceStatus.CANCELLED]: 'action_cancel',
+};
+
+const getHolderId = (req: Request): number | null =>
+  req.user?.userMetadata?.odooHolderId ?? null;
+
+const mapAdvance = (r: any): Advance => ({
+  id: String(r.id),
+  userId: `holder_${Array.isArray(r.holder_id) ? r.holder_id[0] : r.holder_id}`,
+  odooAdvanceId: r.id,
+  amount: r.amount || 0,
+  purpose: r.reason || r.name,
+  status: odooToStatus[r.state] || AdvanceStatus.PENDING,
+  createdAt: r.create_date ? new Date(r.create_date) : new Date(),
+  updatedAt: r.write_date ? new Date(r.write_date) : new Date(),
+});
+
+const errorResponse = (res: Response, status: number, message: string, code: string) =>
+  res.status(status).json({
+    success: false,
+    error: { message, code },
+    timestamp: new Date(),
+  } as ApiResponse<null>);
+
 const createAdvanceSchema = Joi.object({
   amount: Joi.number().positive().required(),
-  purpose: Joi.string().min(5).max(500).required(),
-  expectedReturnDate: Joi.date().optional()
+  purpose: Joi.string().min(3).max(500).required(),
+  expectedReturnDate: Joi.date().optional(),
+  submit: Joi.boolean().optional(),
 });
 
 const updateAdvanceSchema = Joi.object({
   amount: Joi.number().positive().optional(),
-  purpose: Joi.string().min(5).max(500).optional(),
+  purpose: Joi.string().min(3).max(500).optional(),
   expectedReturnDate: Joi.date().optional()
 });
 
@@ -24,296 +85,219 @@ const updateStatusSchema = Joi.object({
   rejectionReason: Joi.string().max(500).optional()
 });
 
-// Mock advance storage (replace with actual database/Supabase)
-const advances: Map<string, Advance> = new Map();
-
-// Helper function to generate advance ID
-const generateAdvanceId = (): string => `adv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
 // Get all advances with pagination
 router.get('/', asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.headers['x-user-id'] as string;
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
 
-  // Parse pagination parameters
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
-  const sortBy = (req.query.sortBy as string) || 'createdAt';
   const sortOrder = (req.query.sortOrder as string) === 'asc' ? 'asc' : 'desc';
 
-  // Filter by user ID if provided
-  let filteredAdvances = Array.from(advances.values());
-  if (userId) {
-    filteredAdvances = filteredAdvances.filter(adv => adv.userId === userId);
+  const domain: any[] = [['holder_id', '=', holderId]];
+  if (req.query.status && statusToOdoo[req.query.status as AdvanceStatus]) {
+    domain.push(['state', 'in', statusToOdoo[req.query.status as AdvanceStatus]]);
   }
 
-  // Filter by status if provided
-  if (req.query.status) {
-    filteredAdvances = filteredAdvances.filter(adv => adv.status === req.query.status);
-  }
-
-  // Sort
-  filteredAdvances.sort((a, b) => {
-    const aValue = a[sortBy as keyof Advance] as any;
-    const bValue = b[sortBy as keyof Advance] as any;
-    
-    if (sortOrder === 'asc') {
-      return aValue > bValue ? 1 : -1;
-    } else {
-      return aValue < bValue ? 1 : -1;
-    }
+  const auth = await odooAuthenticate();
+  const total = await execute_kw(auth, ODOO_MODEL, 'search_count', [domain]);
+  const rows = await search_read(auth, {
+    model: ODOO_MODEL,
+    domain,
+    fields: FIELDS,
+    offset: (page - 1) * limit,
+    limit,
+    order: `id ${sortOrder}`,
   });
-
-  // Paginate
-  const total = filteredAdvances.length;
-  const totalPages = Math.ceil(total / limit);
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
-  const data = filteredAdvances.slice(startIndex, endIndex);
 
   const response: ApiResponse<PaginatedResponse<Advance>> = {
     success: true,
     data: {
-      data,
-      total,
+      data: rows.map(mapAdvance),
+      total: total || 0,
       page,
       limit,
-      totalPages
+      totalPages: Math.ceil((total || 0) / limit),
     },
     timestamp: new Date()
   };
-
   res.status(200).json(response);
 }));
 
 // Get advance by ID
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const advance = advances.get(id);
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
 
-  if (!advance) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Advance not found',
-        code: 'ADVANCE_NOT_FOUND'
-      },
-      timestamp: new Date()
-    };
-    return res.status(404).json(response);
-  }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return errorResponse(res, 400, 'Invalid advance ID', 'INVALID_ID');
 
-  const response: ApiResponse<Advance> = {
-    success: true,
-    data: advance,
-    timestamp: new Date()
-  };
+  const auth = await odooAuthenticate();
+  const rows = await search_read(auth, {
+    model: ODOO_MODEL,
+    domain: [['id', '=', id], ['holder_id', '=', holderId]],
+    fields: FIELDS,
+    limit: 1,
+  });
+  if (!rows.length) return errorResponse(res, 404, 'Advance not found', 'ADVANCE_NOT_FOUND');
 
+  const response: ApiResponse<Advance> = { success: true, data: mapAdvance(rows[0]), timestamp: new Date() };
   res.status(200).json(response);
 }));
 
-// Create new advance
+// Create new advance in Odoo
 router.post('/', validate(createAdvanceSchema), asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.headers['x-user-id'] as string;
-  if (!userId) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'User ID required',
-        code: 'UNAUTHORIZED'
-      },
-      timestamp: new Date()
-    };
-    return res.status(401).json(response);
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
+
+  const { amount, purpose, submit } = req.body;
+
+  const auth = await odooAuthenticate();
+  let newId: number;
+  try {
+    newId = await odooCreate(auth, {
+      model: ODOO_MODEL,
+      data: { holder_id: holderId, amount, reason: purpose },
+    });
+  } catch (e: any) {
+    logger.error('Odoo create advance failed:', e);
+    return errorResponse(res, 502, `Odoo create failed: ${e.message}`, 'ODOO_ERROR');
   }
 
-  const { amount, purpose, expectedReturnDate } = req.body;
+  if (submit !== false) {
+    try {
+      await execute_kw(auth, ODOO_MODEL, 'action_submit', [[newId]]);
+    } catch (e: any) {
+      logger.warn(`Created advance ${newId} but submit failed:`, e);
+    }
+  }
 
-  // Create advance
-  const advanceId = generateAdvanceId();
-  const now = new Date();
+  const rows = await search_read(auth, {
+    model: ODOO_MODEL,
+    domain: [['id', '=', newId]],
+    fields: FIELDS,
+    limit: 1,
+  });
 
-  const newAdvance: Advance = {
-    id: advanceId,
-    userId,
-    amount,
-    purpose,
-    expectedReturnDate,
-    status: AdvanceStatus.PENDING,
-    createdAt: now,
-    updatedAt: now
-  };
-
-  advances.set(advanceId, newAdvance);
-
-  logger.info(`Advance created: ${advanceId} by user ${userId}`);
+  logger.info(`Advance created in Odoo: ${newId} for holder ${holderId}`);
 
   const response: ApiResponse<Advance> = {
     success: true,
-    data: newAdvance,
+    data: mapAdvance(rows[0]),
     timestamp: new Date()
   };
-
   res.status(201).json(response);
 }));
 
-// Update advance
+// Update advance (draft only)
 router.put('/:id', validate(updateAdvanceSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const advance = advances.get(id);
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
 
-  if (!advance) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Advance not found',
-        code: 'ADVANCE_NOT_FOUND'
-      },
-      timestamp: new Date()
-    };
-    return res.status(404).json(response);
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return errorResponse(res, 400, 'Invalid advance ID', 'INVALID_ID');
+
+  const auth = await odooAuthenticate();
+  const rows = await search_read(auth, {
+    model: ODOO_MODEL,
+    domain: [['id', '=', id], ['holder_id', '=', holderId]],
+    fields: FIELDS,
+    limit: 1,
+  });
+  if (!rows.length) return errorResponse(res, 404, 'Advance not found', 'ADVANCE_NOT_FOUND');
+  if (rows[0].state !== 'draft') {
+    return errorResponse(res, 400, 'Can only update advances in draft status', 'INVALID_STATUS');
   }
 
-  const userId = req.headers['x-user-id'] as string;
-  if (advance.userId !== userId) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Not authorized to update this advance',
-        code: 'FORBIDDEN'
-      },
-      timestamp: new Date()
-    };
-    return res.status(403).json(response);
+  const { amount, purpose } = req.body;
+  const data: Record<string, any> = {};
+  if (amount !== undefined) data.amount = amount;
+  if (purpose !== undefined) data.reason = purpose;
+
+  try {
+    if (Object.keys(data).length) await odooWrite(auth, { model: ODOO_MODEL, ids: [id], data });
+  } catch (e: any) {
+    logger.error(`Odoo update advance ${id} failed:`, e);
+    return errorResponse(res, 502, `Odoo update failed: ${e.message}`, 'ODOO_ERROR');
   }
 
-  // Can only update pending advances
-  if (advance.status !== AdvanceStatus.PENDING) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Can only update advances in PENDING status',
-        code: 'INVALID_STATUS'
-      },
-      timestamp: new Date()
-    };
-    return res.status(400).json(response);
-  }
-
-  const { amount, purpose, expectedReturnDate } = req.body;
-
-  // Update advance
-  if (amount !== undefined) advance.amount = amount;
-  if (purpose !== undefined) advance.purpose = purpose;
-  if (expectedReturnDate !== undefined) advance.expectedReturnDate = expectedReturnDate;
-  advance.updatedAt = new Date();
-
-  logger.info(`Advance updated: ${id}`);
-
-  const response: ApiResponse<Advance> = {
-    success: true,
-    data: advance,
-    timestamp: new Date()
-  };
-
+  const updated = await search_read(auth, {
+    model: ODOO_MODEL, domain: [['id', '=', id]], fields: FIELDS, limit: 1,
+  });
+  const response: ApiResponse<Advance> = { success: true, data: mapAdvance(updated[0]), timestamp: new Date() };
   res.status(200).json(response);
 }));
 
-// Update advance status
+// Update advance status via Odoo workflow
 router.patch('/:id/status', validate(updateStatusSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const advance = advances.get(id);
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
 
-  if (!advance) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Advance not found',
-        code: 'ADVANCE_NOT_FOUND'
-      },
-      timestamp: new Date()
-    };
-    return res.status(404).json(response);
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return errorResponse(res, 400, 'Invalid advance ID', 'INVALID_ID');
+
+  const { status } = req.body as { status: AdvanceStatus };
+  const action = statusToAction[status];
+  if (!action) {
+    return errorResponse(res, 400, `Status transition to ${status} is not supported from the app`, 'INVALID_TRANSITION');
   }
 
-  const { status } = req.body;
-  const userId = req.headers['x-user-id'] as string;
+  const auth = await odooAuthenticate();
+  const rows = await search_read(auth, {
+    model: ODOO_MODEL,
+    domain: [['id', '=', id], ['holder_id', '=', holderId]],
+    fields: FIELDS,
+    limit: 1,
+  });
+  if (!rows.length) return errorResponse(res, 404, 'Advance not found', 'ADVANCE_NOT_FOUND');
 
-  // Update status
-  advance.status = status;
-  advance.updatedAt = new Date();
-
-  if (status === AdvanceStatus.DISBURSED) {
-    advance.disbursementDate = new Date();
-  } else if (status === AdvanceStatus.SETTLED) {
-    advance.settlementDate = new Date();
+  try {
+    await execute_kw(auth, ODOO_MODEL, action, [[id]]);
+  } catch (e: any) {
+    logger.error(`Odoo ${action} on advance ${id} failed:`, e);
+    return errorResponse(res, 502, `Odoo workflow failed: ${e.message}`, 'ODOO_ERROR');
   }
 
-  logger.info(`Advance status updated: ${id} to ${status}`);
-
-  const response: ApiResponse<Advance> = {
-    success: true,
-    data: advance,
-    timestamp: new Date()
-  };
-
+  const updated = await search_read(auth, {
+    model: ODOO_MODEL, domain: [['id', '=', id]], fields: FIELDS, limit: 1,
+  });
+  const response: ApiResponse<Advance> = { success: true, data: mapAdvance(updated[0]), timestamp: new Date() };
   res.status(200).json(response);
 }));
 
-// Delete advance
+// Delete advance (draft only)
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const advance = advances.get(id);
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
 
-  if (!advance) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Advance not found',
-        code: 'ADVANCE_NOT_FOUND'
-      },
-      timestamp: new Date()
-    };
-    return res.status(404).json(response);
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return errorResponse(res, 400, 'Invalid advance ID', 'INVALID_ID');
+
+  const auth = await odooAuthenticate();
+  const rows = await search_read(auth, {
+    model: ODOO_MODEL,
+    domain: [['id', '=', id], ['holder_id', '=', holderId]],
+    fields: ['id', 'state'],
+    limit: 1,
+  });
+  if (!rows.length) return errorResponse(res, 404, 'Advance not found', 'ADVANCE_NOT_FOUND');
+  if (rows[0].state !== 'draft') {
+    return errorResponse(res, 400, 'Can only delete draft advances', 'INVALID_STATUS');
   }
 
-  const userId = req.headers['x-user-id'] as string;
-  if (advance.userId !== userId) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Not authorized to delete this advance',
-        code: 'FORBIDDEN'
-      },
-      timestamp: new Date()
-    };
-    return res.status(403).json(response);
+  try {
+    await odooUnlink(auth, { model: ODOO_MODEL, ids: [id] });
+  } catch (e: any) {
+    logger.error(`Odoo delete advance ${id} failed:`, e);
+    return errorResponse(res, 502, `Odoo delete failed: ${e.message}`, 'ODOO_ERROR');
   }
 
-  // Can only delete pending advances
-  if (advance.status !== AdvanceStatus.PENDING) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Can only delete advances in PENDING status',
-        code: 'INVALID_STATUS'
-      },
-      timestamp: new Date()
-    };
-    return res.status(400).json(response);
-  }
-
-  advances.delete(id);
-
-  logger.info(`Advance deleted: ${id}`);
-
+  logger.info(`Advance deleted in Odoo: ${id}`);
   const response: ApiResponse<{ message: string }> = {
     success: true,
-    data: {
-      message: 'Advance deleted successfully'
-    },
+    data: { message: 'Advance deleted successfully' },
     timestamp: new Date()
   };
-
   res.status(200).json(response);
 }));
 

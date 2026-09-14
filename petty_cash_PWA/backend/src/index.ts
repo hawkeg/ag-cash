@@ -1,7 +1,7 @@
+import './config/env';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { authMiddleware as authenticate } from './middleware/auth';
 import { ApiResponse } from './types';
@@ -9,9 +9,7 @@ import authController from './controllers/authController';
 import requestController from './controllers/requestController';
 import expenseController from './controllers/expenseController';
 import advanceController from './controllers/advanceController';
-
-// Load environment variables
-dotenv.config();
+import dashboardController from './controllers/dashboardController';
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -49,6 +47,7 @@ app.use('/api/auth', authController);
 app.use('/api/requests', authenticate, requestController);
 app.use('/api/expenses', authenticate, expenseController);
 app.use('/api/advances', authenticate, advanceController);
+app.use('/api/dashboard', authenticate, dashboardController);
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
