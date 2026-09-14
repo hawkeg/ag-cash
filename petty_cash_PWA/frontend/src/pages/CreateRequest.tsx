@@ -21,6 +21,7 @@ import {
   Switch,
   FormControlLabel,
   Autocomplete,
+  InputAdornment,
 } from '@mui/material'
 import {
   ArrowForward,
@@ -40,6 +41,9 @@ import {
   Send,
   ExpandMore,
   Storefront,
+  Mic,
+  LocationOn,
+  AutoAwesome,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { 
@@ -62,6 +66,8 @@ interface ExpenseLine {
   receiptUrl?: string
   receiptFile?: string
   receiptFilename?: string
+  latitude?: number
+  longitude?: number
 }
 
 interface VendorOption {
@@ -124,6 +130,9 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<any>(null)
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
@@ -191,10 +200,13 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       }
     }
 
+    const geo = await captureLocation()
+
     const newExpense: ExpenseLine = {
       ...currentExpense,
       vendorId,
       vendorName,
+      ...geo,
       id: Date.now().toString(),
     }
 
@@ -247,10 +259,11 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
     const reader = new FileReader()
     reader.onload = () => {
       const dataUrl = reader.result as string
+      const base64 = dataUrl.split(',')[1]
       setCurrentExpense((prev) => ({
         ...prev,
         receiptUrl: dataUrl,
-        receiptFile: dataUrl.split(',')[1],
+        receiptFile: base64,
         receiptFilename: file.name,
       }))
       setErrors((prev) => {
@@ -258,10 +271,65 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
         delete next.receiptUrl
         return next
       })
+      // Auto-scan the receipt with Odoo OCR to prefill vendor/amount/category
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+        setIsScanning(true)
+        expensesAPI.scanReceipt({ file: base64, fileName: file.name })
+          .then((res) => {
+            const d = res.data
+            if (!d) return
+            setCurrentExpense((prev) => ({
+              ...prev,
+              vendorId: prev.vendorId ?? d.vendorId,
+              vendorName: prev.vendorName || d.vendorName || '',
+              amount: prev.amount > 0 ? prev.amount : d.amount || prev.amount,
+              categoryId: prev.categoryId ?? d.categoryId,
+            }))
+          })
+          .catch(() => {})
+          .finally(() => setIsScanning(false))
+      }
     }
     reader.readAsDataURL(file)
     e.target.value = ''
   }
+
+  const toggleVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setErrors((prev) => ({ ...prev, description: 'الإدخال الصوتي غير مدعوم في هذا المتصفح' }))
+      return
+    }
+    if (isListening) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const rec = new SpeechRecognition()
+    rec.lang = 'ar-SA'
+    rec.interimResults = false
+    rec.onresult = (e: any) => {
+      const text = e.results[0][0].transcript
+      setCurrentExpense((prev) => ({
+        ...prev,
+        description: prev.description ? `${prev.description} ${text}` : text,
+      }))
+    }
+    rec.onend = () => setIsListening(false)
+    rec.onerror = () => setIsListening(false)
+    recognitionRef.current = rec
+    rec.start()
+    setIsListening(true)
+  }
+
+  const captureLocation = (): Promise<{ latitude?: number; longitude?: number }> =>
+    new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve({})
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => resolve({}),
+        { timeout: 5000, maximumAge: 60000 }
+      )
+    })
 
   const calculateTotals = () => {
     const subtotal = expenseLines.reduce((sum, line) => sum + line.amount, 0)
@@ -294,7 +362,14 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
           receiptUrl: line.receiptUrl,
           receiptFile: line.receiptFile,
           receiptFilename: line.receiptFilename,
-          ...(line.vendorName && !line.vendorId ? { notes: `المورد: ${line.vendorName}` } : {}),
+          ...((line.vendorName && !line.vendorId) || line.latitude
+            ? {
+                notes: [
+                  line.vendorName && !line.vendorId ? `المورد: ${line.vendorName}` : '',
+                  line.latitude ? `الموقع: ${line.latitude},${line.longitude}` : '',
+                ].filter(Boolean).join(' | '),
+              }
+            : {}),
         } as any)),
       }
 
@@ -674,6 +749,19 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })}
                     error={!!errors.description}
                     helperText={errors.description}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={toggleVoiceInput}
+                            color={isListening ? 'error' : 'default'}
+                          >
+                            <Mic fontSize="small" />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 </Box>
 
@@ -890,6 +978,14 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     style={{ display: 'none' }}
                     onChange={handleReceiptFile}
                   />
+                  {isScanning && (
+                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CircularProgress size={18} />
+                      <Typography variant="caption" color="primary">
+                        <AutoAwesome sx={{ fontSize: 14, verticalAlign: 'middle' }} /> جاري استخراج بيانات الفاتورة بالذكاء الاصطناعي...
+                      </Typography>
+                    </Box>
+                  )}
                   {currentExpense.receiptUrl && (
                     <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Box

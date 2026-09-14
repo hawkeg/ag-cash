@@ -149,6 +149,10 @@ export const expensesAPI = {
     const response = await api.delete<ApiResponse<{ message: string }>>(`/api/expenses/categories/${id}`);
     return response.data;
   },
+  scanReceipt: async (data: { file: string; fileName: string; requestId?: number }) => {
+    const response = await api.post<ApiResponse<any>>('/api/expenses/ocr', data);
+    return response.data;
+  },
 };
 
 // Advances API

@@ -489,4 +489,130 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json(response);
 }));
 
+// ============ OCR (ems_petty_invoice_ocr) ============
+const INVOICE_DOC_MODEL = 'ems.petty.invoice.document';
+const OCR_RESULT_MODEL = 'ems.petty.ocr.extraction.result';
+
+const ocrUploadSchema = Joi.object({
+  file: Joi.string().required(),
+  fileName: Joi.string().required(),
+  requestId: Joi.number().optional(),
+});
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Upload invoice image -> run Odoo OCR -> return extracted fields
+router.post('/ocr', validate(ocrUploadSchema), asyncHandler(async (req: Request, res: Response) => {
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
+
+  const { file, fileName, requestId } = req.body;
+  const auth = await odooAuthenticate();
+
+  const data: Record<string, any> = {
+    holder_id: holderId,
+    file_data: file,
+    file_name: fileName,
+    source: 'mobile_camera',
+    device_info: req.headers['user-agent'] || 'ag-cash pwa',
+  };
+  if (requestId) data.request_id = requestId;
+
+  let docId: number;
+  try {
+    docId = await odooCreate(auth, { model: INVOICE_DOC_MODEL, data });
+    await execute_kw(auth, INVOICE_DOC_MODEL, 'action_process_ocr', [[docId]]);
+  } catch (e: any) {
+    logger.error('OCR create/process failed:', e);
+    return errorResponse(res, 502, `OCR failed: ${e.message}`, 'ODOO_ERROR');
+  }
+
+  // Poll until done/error (max ~90s)
+  let doc: any = null;
+  for (let i = 0; i < 30; i++) {
+    await sleep(3000);
+    const rows = await search_read(auth, {
+      model: INVOICE_DOC_MODEL,
+      domain: [['id', '=', docId]],
+      fields: ['state', 'error_message', 'ocr_result_id', 'needs_review'],
+      limit: 1,
+    });
+    doc = rows[0];
+    if (!doc || ['done', 'error', 'cancelled'].includes(doc.state)) break;
+  }
+
+  if (!doc) return errorResponse(res, 504, 'OCR timed out', 'OCR_TIMEOUT');
+  if (doc.state !== 'done') {
+    return errorResponse(res, 502, doc.error_message || `OCR ended in state ${doc.state}`, 'OCR_FAILED');
+  }
+
+  let result: any = {};
+  if (Array.isArray(doc.ocr_result_id) && doc.ocr_result_id[0]) {
+    const rows = await search_read(auth, {
+      model: OCR_RESULT_MODEL,
+      domain: [['id', '=', doc.ocr_result_id[0]]],
+      fields: [
+        'vendor_name', 'vendor_tax_id', 'vendor_commercial_reg', 'vendor_partner_id',
+        'invoice_number', 'invoice_date', 'subtotal_amount', 'tax_amount',
+        'total_amount', 'currency_detected', 'category_id', 'category_match_state',
+        'category_match_score', 'confidence_score', 'needs_review', 'description',
+      ],
+      limit: 1,
+    });
+    result = rows[0] || {};
+  }
+
+  const response: ApiResponse<any> = {
+    success: true,
+    data: {
+      documentId: docId,
+      needsReview: doc.needs_review || result.needs_review,
+      vendorName: result.vendor_name || undefined,
+      vendorId: Array.isArray(result.vendor_partner_id) ? result.vendor_partner_id[0] : undefined,
+      vendorVat: result.vendor_tax_id || undefined,
+      invoiceNumber: result.invoice_number || undefined,
+      invoiceDate: result.invoice_date || undefined,
+      amount: result.total_amount || undefined,
+      taxAmount: result.tax_amount || undefined,
+      categoryId: Array.isArray(result.category_id) ? result.category_id[0] : undefined,
+      categoryMatchState: result.category_match_state || undefined,
+      confidence: result.confidence_score ?? undefined,
+      description: result.description || undefined,
+    },
+    timestamp: new Date(),
+  };
+  res.status(200).json(response);
+}));
+
+// Confirm an OCR document -> creates the expense line (+request) in Odoo
+router.post('/ocr/:id/confirm', asyncHandler(async (req: Request, res: Response) => {
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
+
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return errorResponse(res, 400, 'Invalid document ID', 'INVALID_ID');
+
+  const auth = await odooAuthenticate();
+  try {
+    await execute_kw(auth, INVOICE_DOC_MODEL, 'action_create_expense_line', [[id]]);
+  } catch (e: any) {
+    return errorResponse(res, 502, `Confirm failed: ${e.message}`, 'ODOO_ERROR');
+  }
+  const rows = await search_read(auth, {
+    model: INVOICE_DOC_MODEL,
+    domain: [['id', '=', id]],
+    fields: ['expense_line_id', 'request_id'],
+    limit: 1,
+  });
+  const response: ApiResponse<any> = {
+    success: true,
+    data: {
+      expenseLineId: Array.isArray(rows[0]?.expense_line_id) ? rows[0].expense_line_id[0] : undefined,
+      requestId: Array.isArray(rows[0]?.request_id) ? rows[0].request_id[0] : undefined,
+    },
+    timestamp: new Date(),
+  };
+  res.status(200).json(response);
+}));
+
 export default router;
