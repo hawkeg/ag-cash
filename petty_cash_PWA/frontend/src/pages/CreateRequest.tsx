@@ -240,31 +240,64 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
+  const draftLoadedRef = useRef(false)
+
+  // Persist the in-progress form so an Android tab reload (camera eviction)
+  // doesn't wipe the draft
+  const DRAFT_KEY = 'agcash_request_draft'
+  const persistDraft = () => {
+    try {
+      // Strip heavy base64 receipt data — a reload loses the File anyway
+      const strip = (l: ExpenseLine) => ({ ...l, receiptUrl: undefined, receiptFile: undefined })
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+        requestDescription,
+        expenseLines: expenseLines.map(strip),
+        currentExpense: strip(currentExpense),
+        showExpenseForm: true,
+      }))
+    } catch {}
+  }
+  const clearDraft = () => sessionStorage.removeItem(DRAFT_KEY)
+
+  useEffect(() => {
+    if (draftLoadedRef.current) return
+    draftLoadedRef.current = true
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY)
+      if (raw) {
+        const d = JSON.parse(raw)
+        if (d.requestDescription) setRequestDescription(d.requestDescription)
+        if (d.expenseLines?.length) setExpenseLines(d.expenseLines)
+        if (d.currentExpense) setCurrentExpense(d.currentExpense)
+        if (d.showExpenseForm) setShowExpenseForm(true)
+      }
+    } catch {}
+  }, [])
 
   const handleCameraCapture = () => {
+    persistDraft()
     cameraInputRef.current?.click()
   }
 
   const handleGalleryUpload = () => {
+    persistDraft()
     galleryInputRef.current?.click()
   }
 
   const handleReceiptFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, receiptUrl: 'حجم الملف يتجاوز 5 ميجابايت' }))
+    if (file.size > 15 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, receiptUrl: 'حجم الملف يتجاوز 15 ميجابايت' }))
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
+    const processImage = (dataUrl: string, fileName: string) => {
       const base64 = dataUrl.split(',')[1]
       setCurrentExpense((prev) => ({
         ...prev,
         receiptUrl: dataUrl,
         receiptFile: base64,
-        receiptFilename: file.name,
+        receiptFilename: fileName,
       }))
       setErrors((prev) => {
         const next = { ...prev }
@@ -274,7 +307,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       // Auto-scan the receipt with Odoo OCR to prefill vendor/amount/category
       if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         setIsScanning(true)
-        expensesAPI.scanReceipt({ file: base64, fileName: file.name })
+        expensesAPI.scanReceipt({ file: base64, fileName })
           .then((res) => {
             const d = res.data
             if (!d) return
@@ -288,6 +321,29 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
           })
           .catch(() => {})
           .finally(() => setIsScanning(false))
+      }
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      // Downscale photos to max 1600px JPEG — keeps base64 small enough for
+      // upload limits and faster OCR, and reduces tab memory pressure
+      if (file.type.startsWith('image/')) {
+        const img = new Image()
+        img.onload = () => {
+          const MAX = 1600
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+          processImage(canvas.toDataURL('image/jpeg', 0.8), file.name.replace(/\.\w+$/, '.jpg'))
+        }
+        img.onerror = () => processImage(dataUrl, file.name)
+        img.src = dataUrl
+      } else {
+        processImage(dataUrl, file.name)
       }
     }
     reader.readAsDataURL(file)
@@ -385,6 +441,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
 
       const res = await requestsAPI.create(requestDto)
       if (res.success && res.data) {
+        clearDraft()
         navigate(`/requests/${res.data.id}`)
         return
       }
