@@ -5,7 +5,7 @@ import { logger } from '../utils/logger';
 const ODOO_URL = process.env.ODOO_URL || 'http://localhost:8069';
 const ODOO_DB = process.env.ODOO_DB || '';
 const ODOO_USER = process.env.ODOO_USER || '';
-const ODOO_PASSWORD = process.env.ODOO_PASSWORD || '';
+const ODOO_API_KEY = process.env.ODOO_API_KEY || '';
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -105,17 +105,17 @@ export const authenticate = async (): Promise<AuthResponse> => {
       });
       
       return new Promise((resolve, reject) => {
-        client.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASSWORD, {}], (error: any, value: any) => {
+        client.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_API_KEY, {}], (error: any, value: any) => {
           if (error) {
             logger.error('Odoo authentication error:', error);
             reject(new OdooError('Authentication failed', 'AUTH_ERROR', error.faultCode));
           } else if (value === false || value === null) {
-            reject(new OdooError('Invalid credentials', 'INVALID_CREDENTIALS'));
+            reject(new OdooError('Invalid API key', 'INVALID_API_KEY'));
           } else {
             logger.info('Odoo authentication successful');
             resolve({
               uid: value as number,
-              password: ODOO_PASSWORD,
+              password: ODOO_API_KEY,
               context: {},
             });
           }

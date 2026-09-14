@@ -95,7 +95,7 @@ Key environment variables to configure in `.env.local`:
 - `ODOO_URL` - Odoo instance URL
 - `ODOO_DB` - Odoo database name
 - `ODOO_USER` - Odoo API username
-- `ODOO_PASSWORD` - Odoo API password
+- `ODOO_API_KEY` - Odoo API key (generate in Settings → Users → API Keys)
 
 ## Development
 
