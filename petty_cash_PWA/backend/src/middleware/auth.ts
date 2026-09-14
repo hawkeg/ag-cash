@@ -1,7 +1,39 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 import { verifyToken } from '../services/supabase';
 import { AuthUser } from '../types';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+
+/**
+ * Verify a bearer token. Tries locally-issued JWT first (holder login),
+ * then falls back to Supabase token verification.
+ */
+async function verifyAnyToken(token: string): Promise<AuthUser | null> {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+    if (payload && payload.sub) {
+      return {
+        id: payload.sub as string,
+        email: (payload.email as string) || '',
+        userMetadata: {
+          name: payload.name,
+          odooHolderId: payload.odooHolderId,
+          odooEmployeeId: payload.odooEmployeeId,
+        },
+      };
+    }
+  } catch {
+    // Not a local JWT - try Supabase
+  }
+
+  try {
+    return await verifyToken(token);
+  } catch {
+    return null;
+  }
+}
 
 // Extend Express Request to include user
 declare global {
@@ -65,7 +97,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     }
 
     // Verify the token and get the user
-    const user = await verifyToken(token);
+    const user = await verifyAnyToken(token);
 
     if (!user) {
       logger.warn('Authentication failed: Invalid or expired token');
@@ -127,7 +159,7 @@ export async function optionalAuthMiddleware(req: Request, _res: Response, next:
     }
 
     // Try to verify the token
-    const user = await verifyToken(token);
+    const user = await verifyAnyToken(token);
 
     if (user) {
       // Valid token, attach user to request

@@ -9,6 +9,16 @@ import Reports from './pages/Reports'
 import AdvanceRequest from './pages/AdvanceRequest'
 import History from './pages/History'
 import Profile from './pages/Profile'
+import Login from './pages/Login'
+
+// Redirect to /login when there is no session token
+const RequireAuth = ({ children }: { children: JSX.Element }) => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+  return children
+}
 
 // Create theme with corporate fintech design
 const theme = createTheme({
@@ -86,45 +96,46 @@ function App() {
       <CssBaseline />
       <BrowserRouter>
         <Routes>
+          <Route path="/login" element={<Login />} />
           <Route path="/" element={
-            <Layout>
+            <RequireAuth><Layout>
               <Dashboard />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="/requests" element={
-            <Layout>
+            <RequireAuth><Layout>
               <Requests />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="/create-request" element={
-            <Layout>
+            <RequireAuth><Layout>
               <CreateRequest />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="/requests/:id" element={
-            <Layout>
+            <RequireAuth><Layout>
               <RequestDetail />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="/advance-request" element={
-            <Layout>
+            <RequireAuth><Layout>
               <AdvanceRequest />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="/reports" element={
-            <Layout>
+            <RequireAuth><Layout>
               <Reports />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="/history" element={
-            <Layout>
+            <RequireAuth><Layout>
               <History />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="/profile" element={
-            <Layout>
+            <RequireAuth><Layout>
               <Profile />
-            </Layout>
+            </Layout></RequireAuth>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

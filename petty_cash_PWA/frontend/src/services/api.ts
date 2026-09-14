@@ -45,8 +45,12 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  login: async (email: string, password: string) => {
-    const response = await api.post<ApiResponse<{ token: string; user: any }>>('/api/auth/login', { email, password });
+  getHolders: async (search?: string) => {
+    const response = await api.get<ApiResponse<any[]>>('/api/auth/holders', { params: { search } });
+    return response.data;
+  },
+  login: async (holderId: number) => {
+    const response = await api.post<ApiResponse<{ token: string; user: any }>>('/api/auth/login', { holderId });
     return response.data;
   },
   register: async (email: string, password: string, name: string) => {

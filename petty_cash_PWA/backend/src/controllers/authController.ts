@@ -1,178 +1,187 @@
 import { Router, Request, Response } from 'express';
 import Joi from 'joi';
+import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 import { validate, asyncHandler } from '../middleware/validation';
+import { authMiddleware } from '../middleware/auth';
+import { authenticate as odooAuthenticate, search_read, OdooError } from '../services/odoo';
 import { ApiResponse } from '../types';
 
 const router = Router();
 
-// Validation schemas
-const registerSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().min(8).required(),
-  name: Joi.string().min(2).max(100).required(),
-  employeeId: Joi.string().optional(),
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const JWT_EXPIRES_IN = '7d';
+
+interface HolderRow {
+  id: number;
+  name: string;
+  employee_id: [number, string] | false;
+  department_id: [number, string] | false;
+  state: string;
+  limit_amount: number;
+  remaining_amount: number;
+}
+
+const HOLDER_FIELDS = [
+  'id',
+  'name',
+  'employee_id',
+  'department_id',
+  'state',
+  'limit_amount',
+  'remaining_amount',
+];
+
+const mapHolder = (h: HolderRow) => ({
+  id: h.id,
+  name: h.name,
+  employeeId: Array.isArray(h.employee_id) ? h.employee_id[0] : null,
+  employeeName: Array.isArray(h.employee_id) ? h.employee_id[1] : h.name,
+  department: Array.isArray(h.department_id) ? h.department_id[1] : '',
+  state: h.state,
+  limitAmount: h.limit_amount,
+  remainingAmount: h.remaining_amount,
 });
+
+// List active petty cash holders from Odoo (used by the login screen)
+router.get('/holders', asyncHandler(async (req: Request, res: Response) => {
+  const search = (req.query.search as string | undefined)?.trim();
+
+  const domain: any[] = [['state', '=', 'active']];
+  if (search) {
+    domain.unshift('|', ['employee_id', 'ilike', search], ['name', 'ilike', search]);
+  }
+
+  try {
+    const auth = await odooAuthenticate();
+    const rows = await search_read(auth, {
+      model: 'ems.petty.holder',
+      domain,
+      fields: HOLDER_FIELDS,
+      limit: 100,
+      order: 'employee_id',
+    });
+
+    const response: ApiResponse<any[]> = {
+      success: true,
+      data: rows.map(mapHolder),
+      timestamp: new Date(),
+    };
+    res.json(response);
+  } catch (error) {
+    logger.error('Failed to fetch holders from Odoo:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      error: {
+        message: 'Failed to fetch petty cash holders from Odoo',
+        code: 'ODOO_ERROR',
+      },
+      timestamp: new Date(),
+    };
+    res.status(502).json(response);
+  }
+}));
 
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
-  password: Joi.string().required(),
+  holderId: Joi.number().integer().positive().required(),
 });
 
-// Mock user storage (replace with actual database/Supabase)
-const users: Map<string, any> = new Map();
-
-// Register endpoint
-router.post('/register', validate(registerSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { email, password, name, employeeId } = req.body;
-
-  // Check if user already exists
-  if (users.has(email)) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'User with this email already exists',
-        code: 'USER_EXISTS'
-      },
-      timestamp: new Date()
-    };
-    return res.status(409).json(response);
-  }
-
-  // Create user (in a real app, hash password before storing)
-  const userId = `user_${Date.now()}`;
-  const user = {
-    id: userId,
-    email,
-    password, // In production: hash this!
-    name,
-    employeeId,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
-
-  users.set(email, user);
-
-  logger.info(`User registered: ${email}`);
-
-  const response: ApiResponse<{ userId: string; email: string; name: string }> = {
-    success: true,
-    data: {
-      userId: user.id,
-      email: user.email,
-      name: user.name
-    },
-    timestamp: new Date()
-  };
-
-  res.status(201).json(response);
-}));
-
-// Login endpoint
+// Login by selecting an Odoo petty cash holder
 router.post('/login', validate(loginSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { holderId } = req.body;
 
-  // Find user
-  const user = users.get(email);
-  if (!user) {
+  try {
+    const auth = await odooAuthenticate();
+    const rows = await search_read(auth, {
+      model: 'ems.petty.holder',
+      domain: [['id', '=', holderId]],
+      fields: HOLDER_FIELDS,
+      limit: 1,
+    });
+
+    const row = rows[0] as HolderRow | undefined;
+    if (!row) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: { message: 'Holder not found', code: 'HOLDER_NOT_FOUND' },
+        timestamp: new Date(),
+      };
+      return res.status(404).json(response);
+    }
+
+    if (row.state !== 'active') {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: { message: 'This petty cash holder is not active', code: 'HOLDER_INACTIVE' },
+        timestamp: new Date(),
+      };
+      return res.status(403).json(response);
+    }
+
+    const holder = mapHolder(row);
+    const userId = `holder_${holder.id}`;
+
+    const token = jwt.sign(
+      {
+        sub: userId,
+        odooHolderId: holder.id,
+        odooEmployeeId: holder.employeeId,
+        name: holder.employeeName,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    logger.info(`User logged in as holder: ${holder.employeeName} (holder ${holder.id})`);
+
+    const response: ApiResponse<any> = {
+      success: true,
+      data: {
+        token,
+        user: {
+          id: userId,
+          name: holder.employeeName,
+          holder,
+        },
+      },
+      timestamp: new Date(),
+    };
+    res.json(response);
+  } catch (error) {
+    logger.error('Login failed:', error);
     const response: ApiResponse<null> = {
       success: false,
-      error: {
-        message: 'Invalid credentials',
-        code: 'INVALID_CREDENTIALS'
-      },
-      timestamp: new Date()
+      error: { message: 'Login failed', code: 'LOGIN_ERROR' },
+      timestamp: new Date(),
     };
-    return res.status(401).json(response);
+    res.status(502).json(response);
   }
-
-  // Verify password (in production: use bcrypt.compare)
-  if (user.password !== password) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Invalid credentials',
-        code: 'INVALID_CREDENTIALS'
-      },
-      timestamp: new Date()
-    };
-    return res.status(401).json(response);
-  }
-
-  logger.info(`User logged in: ${email}`);
-
-  // In production: generate JWT token here
-  const response: ApiResponse<{ userId: string; email: string; name: string; token?: string }> = {
-    success: true,
-    data: {
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      token: 'mock_jwt_token' // Replace with actual JWT
-    },
-    timestamp: new Date()
-  };
-
-  res.status(200).json(response);
 }));
 
-// Logout endpoint
-router.post('/logout', asyncHandler(async (req: Request, res: Response) => {
-  // In production: invalidate JWT token or session
+// Logout endpoint (stateless JWT - client discards the token)
+router.post('/logout', asyncHandler(async (_req: Request, res: Response) => {
   const response: ApiResponse<{ message: string }> = {
     success: true,
-    data: {
-      message: 'Logged out successfully'
-    },
-    timestamp: new Date()
+    data: { message: 'Logged out successfully' },
+    timestamp: new Date(),
   };
-
-  res.status(200).json(response);
+  res.json(response);
 }));
 
 // Get current user endpoint
-router.get('/me', asyncHandler(async (req: Request, res: Response) => {
-  // In production: extract user from JWT token
-  const userId = req.headers['x-user-id'] as string;
-
-  if (!userId) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'Unauthorized',
-        code: 'UNAUTHORIZED'
-      },
-      timestamp: new Date()
-    };
-    return res.status(401).json(response);
-  }
-
-  // Find user by ID (mock implementation)
-  const user = Array.from(users.values()).find(u => u.id === userId);
-
-  if (!user) {
-    const response: ApiResponse<null> = {
-      success: false,
-      error: {
-        message: 'User not found',
-        code: 'USER_NOT_FOUND'
-      },
-      timestamp: new Date()
-    };
-    return res.status(404).json(response);
-  }
-
-  const response: ApiResponse<{ userId: string; email: string; name: string }> = {
+router.get('/me', authMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  const response: ApiResponse<any> = {
     success: true,
     data: {
-      userId: user.id,
-      email: user.email,
-      name: user.name
+      userId: req.user!.id,
+      email: req.user!.email,
+      name: req.user!.userMetadata?.name,
+      odooHolderId: req.user!.userMetadata?.odooHolderId,
+      odooEmployeeId: req.user!.userMetadata?.odooEmployeeId,
     },
-    timestamp: new Date()
+    timestamp: new Date(),
   };
-
-  res.status(200).json(response);
+  res.json(response);
 }));
 
 export default router;
