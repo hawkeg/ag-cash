@@ -115,7 +115,6 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
     return () => clearTimeout(t)
   }, [vendorSearch])
 
-  const selectedCategory = categories.find((c) => c.odooCategoryId === currentExpense.categoryId) as any
   const [requestDescription, setRequestDescription] = useState('')
   const [expenseLines, setExpenseLines] = useState<ExpenseLine[]>([])
   const [currentExpense, setCurrentExpense] = useState<ExpenseLine>({
@@ -133,6 +132,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
   const [isScanning, setIsScanning] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<any>(null)
+  const selectedCategory = categories.find((c) => c.odooCategoryId === currentExpense.categoryId) as any
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
