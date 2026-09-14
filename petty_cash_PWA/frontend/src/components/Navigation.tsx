@@ -71,6 +71,10 @@ const Navigation: React.FC = () => {
         zIndex: 1000,
         elevation: 3,
         borderRadius: 0,
+        bgcolor: 'background.paper',
+        pb: 'env(safe-area-inset-bottom, 0px)',
+        borderTop: 1,
+        borderColor: 'divider',
       }}
       elevation={3}
     >
@@ -81,13 +85,20 @@ const Navigation: React.FC = () => {
           bgcolor: 'background.paper',
           height: 56,
           '& .MuiBottomNavigationAction-root': {
-            minWidth: 'auto',
+            minWidth: 0,
             maxWidth: 'none',
-            padding: '6px 12px',
+            padding: '6px 2px',
             color: 'text.secondary',
             '&.Mui-selected': {
               color: 'primary.main',
             },
+          },
+          '& .MuiBottomNavigationAction-label': {
+            fontSize: '0.62rem',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            '&.Mui-selected': { fontSize: '0.65rem' },
           },
         }}
         showLabels

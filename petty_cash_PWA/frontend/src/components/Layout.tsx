@@ -40,7 +40,7 @@ const Layout: React.FC<LayoutProps> = ({
         sx={{
           flexGrow: 1,
           pt: 2,
-          pb: isMobile ? 7 : 3, // Add bottom padding for mobile navigation
+          pb: isMobile ? 'calc(56px + env(safe-area-inset-bottom, 0px) + 16px)' : 3,
           width: '100%',
         }}
       >
