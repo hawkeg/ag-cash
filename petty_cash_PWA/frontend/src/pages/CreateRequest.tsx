@@ -451,6 +451,11 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       const res = await requestsAPI.create(requestDto)
       if (res.success && res.data) {
         clearDraft()
+        if ((res as any).offline || String(res.data.id).startsWith('offline-')) {
+          setErrors({ submit: 'تم الحفظ محلياً — سيُرسل الطلب تلقائياً عند عودة الاتصال' })
+          setTimeout(() => navigate('/requests'), 1200)
+          return
+        }
         navigate(`/requests/${res.data.id}`)
         return
       }

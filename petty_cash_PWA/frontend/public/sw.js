@@ -1,4 +1,21 @@
-/* AG-Cash push notification service worker */
+/* AG-Cash service worker: offline app shell + push notifications */
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { NetworkFirst } from 'workbox-strategies';
+
+// Precache build assets (injected by vite-plugin-pwa at build time)
+precacheAndRoute(self.__WB_MANIFEST);
+
+// SPA navigation fallback so the app shell loads offline
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
+
+// Runtime cache for API GETs (IndexedDB is the primary cache; this is a
+// belt-and-suspenders fallback for the service-worker layer)
+registerRoute(
+  ({ url, request }) => request.method === 'GET' && url.pathname.startsWith('/api/'),
+  new NetworkFirst({ cacheName: 'agcash-api', networkTimeoutSeconds: 5 })
+);
+
 self.addEventListener('push', (event) => {
   let data = { title: 'AG-Cash', body: '', url: '/' };
   try {

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Request, Expense, Advance, CreateRequestDto, CreateAdvanceDto, ApiResponse, PaginatedResponse, RequestStatus, AdvanceStatus } from '@shared/types';
+import { offlineDb } from './offlineDb';
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:4001';
 
@@ -27,10 +28,22 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling
+// Cache key for GET requests
+const cacheKey = (config: any) =>
+  `${config.url}|${JSON.stringify(config.params || {})}`;
+
+// Response interceptor: cache GETs, serve cache offline, queue mutations
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) => {
+    const cfg: any = response.config;
+    if (cfg.method === 'get') {
+      offlineDb.setCache(cacheKey(cfg), response.data).catch(() => {});
+    }
+    return response;
+  },
+  async (error) => {
+    const cfg: any = error.config || {};
+
     if (error.response?.status === 401) {
       // Token expired or invalid - only redirect if we had a token
       const hadToken = !!localStorage.getItem('token');
@@ -38,7 +51,42 @@ api.interceptors.response.use(
       if (hadToken) {
         window.location.href = '/login';
       }
+      return Promise.reject(error);
     }
+
+    // Network failure (offline / server down) — no HTTP response at all
+    if (!error.response && !cfg.__skipOfflineQueue) {
+      // GET: serve last cached response
+      if (cfg.method === 'get') {
+        const cached = await offlineDb.getCache(cacheKey(cfg));
+        if (cached !== undefined) {
+          return { ...error, config: cfg, data: cached, status: 200, offline: true };
+        }
+        return Promise.reject(error);
+      }
+
+      // Mutations: queue for replay and return an optimistic response
+      if (['post', 'put', 'patch', 'delete'].includes(cfg.method)) {
+        await offlineDb.enqueue({
+          method: cfg.method,
+          url: cfg.url,
+          data: cfg.data ? JSON.parse(cfg.data) : undefined,
+          ts: Date.now(),
+        });
+        return {
+          config: cfg,
+          status: 202,
+          offline: true,
+          data: {
+            success: true,
+            offline: true,
+            data: { id: `offline-${Date.now()}`, message: 'محفوظ محلياً — سيُرسل عند عودة الاتصال' },
+            timestamp: new Date(),
+          },
+        };
+      }
+    }
+
     return Promise.reject(error);
   }
 );

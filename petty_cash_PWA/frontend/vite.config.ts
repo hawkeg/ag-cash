@@ -8,7 +8,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
+      devOptions: { enabled: true, type: 'module' },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'AG-Cash',
@@ -38,6 +42,7 @@ export default defineConfig({
     }
   },
   server: {
+    host: true,
     port: 5173,
     proxy: {
       '/api': {

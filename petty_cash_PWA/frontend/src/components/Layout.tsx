@@ -2,6 +2,7 @@ import React from 'react'
 import { Box, useTheme, useMediaQuery, Container } from '@mui/material'
 import Header from './Header'
 import Navigation from './Navigation'
+import OfflineBanner from './OfflineBanner'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -33,6 +34,9 @@ const Layout: React.FC<LayoutProps> = ({
         onMenuClick={onMenuClick}
         showMenuButton={showMenuButton}
       />
+
+      {/* Offline / pending sync banner */}
+      <OfflineBanner />
 
       {/* Main Content */}
       <Box
