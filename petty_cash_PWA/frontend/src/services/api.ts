@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Request, Expense, Advance, CreateRequestDto, CreateAdvanceDto, ApiResponse, PaginatedResponse, RequestStatus, AdvanceStatus } from '@shared/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001';
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:4001';
 
 // Create axios instance
 const api = axios.create({

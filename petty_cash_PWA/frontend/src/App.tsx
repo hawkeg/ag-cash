@@ -113,6 +113,11 @@ function App() {
               <AdvanceRequest />
             </Layout>
           } />
+          <Route path="/reports" element={
+            <Layout>
+              <Reports />
+            </Layout>
+          } />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
