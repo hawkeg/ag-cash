@@ -40,12 +40,15 @@ import {
   ChevronRight,
   VerifiedUser,
   Help,
+  Category as CategoryIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
   Description,
   PrivacyTip,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AuthUser } from '@shared/types';
-import { authAPI } from '../services/api';
+import { authAPI, expensesAPI } from '../services/api';
 import api from '../services/api';
 
 interface UserProfile extends AuthUser {
@@ -96,6 +99,47 @@ const Profile: React.FC = () => {
   const [requestUpdates, setRequestUpdates] = useState(true);
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const [darkMode, setDarkMode] = useState(false);
+
+  // Category management state
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [catBusy, setCatBusy] = useState(false);
+
+  const loadCategories = () => {
+    expensesAPI.getCategories().then((res) => setCategories(res.data ?? [])).catch(() => {});
+  };
+
+  const openCategoryDialog = () => {
+    loadCategories();
+    setCatDialogOpen(true);
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name || catBusy) return;
+    setCatBusy(true);
+    try {
+      await expensesAPI.createCategory({ name });
+      setNewCategoryName('');
+      loadCategories();
+      showSnackbar('تمت إضافة التصنيف');
+    } catch {
+      showSnackbar('تعذر إضافة التصنيف');
+    } finally {
+      setCatBusy(false);
+    }
+  };
+
+  const handleArchiveCategory = async (id: number) => {
+    try {
+      await expensesAPI.deleteCategory(id);
+      loadCategories();
+      showSnackbar('تم أرشفة التصنيف');
+    } catch {
+      showSnackbar('تعذر أرشفة التصنيف');
+    }
+  };
 
   // Dialog state
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -303,6 +347,28 @@ const Profile: React.FC = () => {
                 <ListItemText
                   primary="تغيير كلمة المرور"
                   secondary="آخر تغيير قبل 3 أشهر"
+                  primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
+                />
+                <ListItemSecondaryAction>
+                  <ChevronIcon sx={{ color: 'text.secondary' }} />
+                </ListItemSecondaryAction>
+              </ListItem>
+
+              <Divider sx={{ my: 1 }} />
+
+              <ListItem
+                component="div"
+                onClick={openCategoryDialog}
+                sx={{ borderRadius: 1, cursor: 'pointer', '&:hover': { bgcolor: 'rgba(84, 95, 115, 0.05)' } }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <Avatar sx={{ bgcolor: 'rgba(35, 91, 84, 0.1)', width: 32, height: 32 }}>
+                    <CategoryIcon sx={{ fontSize: 18, color: '#235b54' }} />
+                  </Avatar>
+                </ListItemIcon>
+                <ListItemText
+                  primary="إدارة التصنيفات المالية"
+                  secondary="إضافة وأرشفة تصنيفات المصاريف"
                   primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
                 />
                 <ListItemSecondaryAction>
@@ -531,6 +597,59 @@ const Profile: React.FC = () => {
           تسجيل الخروج
         </Button>
       </Box>
+
+      {/* Category Management Dialog */}
+      <Dialog
+        open={catDialogOpen}
+        onClose={() => setCatDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>التصنيفات المالية</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', gap: 1, pt: 1, mb: 2 }}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="اسم التصنيف الجديد"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+            />
+            <Button
+              variant="contained"
+              onClick={handleAddCategory}
+              disabled={!newCategoryName.trim() || catBusy}
+              sx={{ bgcolor: '#235b54', '&:hover': { bgcolor: '#01433d' }, minWidth: 90 }}
+              startIcon={<AddIcon />}
+            >
+              إضافة
+            </Button>
+          </Box>
+          <List dense disablePadding>
+            {categories.map((c) => (
+              <ListItem
+                key={c.id}
+                secondaryAction={
+                  <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleArchiveCategory(c.id)}>
+                    أرشفة
+                  </Button>
+                }
+              >
+                <ListItemText primary={c.name} />
+              </ListItem>
+            ))}
+            {categories.length === 0 && (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                لا توجد تصنيفات
+              </Typography>
+            )}
+          </List>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setCatDialogOpen(false)}>إغلاق</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Change Password Dialog */}
       <Dialog

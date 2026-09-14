@@ -20,6 +20,7 @@ import {
   Paper,
   Switch,
   FormControlLabel,
+  Autocomplete,
 } from '@mui/material'
 import {
   ArrowForward,
@@ -54,10 +55,17 @@ interface ExpenseLine {
   id: string
   description: string
   categoryId?: number
+  vendorId?: number
   vendorName?: string
   amount: number
   hasVAT: boolean
   receiptUrl?: string
+}
+
+interface VendorOption {
+  id: number
+  name: string
+  vat?: string
 }
 
 interface CreateRequestProps {
@@ -75,6 +83,9 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
 }) => {
   const navigate = useNavigate()
   const [categories, setCategories] = useState<Category[]>(categoriesProp ?? [])
+  const [vendors, setVendors] = useState<VendorOption[]>([])
+  const [vendorSearch, setVendorSearch] = useState('')
+  const [vendorsLoading, setVendorsLoading] = useState(false)
   const holderName = localStorage.getItem('userName') || ''
 
   useEffect(() => {
@@ -83,6 +94,20 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       .then((res) => setCategories(res.data ?? []))
       .catch(() => {})
   }, [])
+
+  // Vendor search (debounced)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setVendorsLoading(true)
+      expensesAPI.getVendors(vendorSearch || undefined)
+        .then((res) => setVendors(res.data ?? []))
+        .catch(() => {})
+        .finally(() => setVendorsLoading(false))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [vendorSearch])
+
+  const selectedCategory = categories.find((c) => c.odooCategoryId === currentExpense.categoryId) as any
   const [requestDescription, setRequestDescription] = useState('')
   const [expenseLines, setExpenseLines] = useState<ExpenseLine[]>([])
   const [currentExpense, setCurrentExpense] = useState<ExpenseLine>({
@@ -128,23 +153,46 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       newErrors.categoryId = 'الرجاء اختيار التصنيف المالي'
     }
 
+    // Category-driven validation rules from Odoo (require_vendor / require_attachment)
+    const cat = categories.find((c) => c.odooCategoryId === expense.categoryId) as any
+    if (cat?.requireVendor && !expense.vendorId && !expense.vendorName?.trim()) {
+      newErrors.vendorId = 'هذا التصنيف يتطلب اختيار مورد'
+    }
+    if (cat?.requireAttachment && !expense.receiptUrl) {
+      newErrors.receiptUrl = 'هذا التصنيف يتطلب إرفاق إيصال'
+    }
+
     if (expense.amount <= 0) {
       newErrors.amount = 'الرجاء إدخال مبلغ صحيح'
     }
-
-    // Receipt attachment is optional until camera/gallery upload is implemented
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleAddExpense = () => {
+  const handleAddExpense = async () => {
     if (!validateExpenseLine(currentExpense)) {
       return
     }
 
+    let vendorId = currentExpense.vendorId
+    const vendorName = currentExpense.vendorName?.trim()
+
+    // If a free-typed vendor name has no Odoo partner yet, create it now
+    if (!vendorId && vendorName) {
+      try {
+        const res = await expensesAPI.createVendor({ name: vendorName })
+        vendorId = res.data?.odooVendorId
+      } catch (e) {
+        // Vendor creation is best-effort; keep the name as a note
+        console.warn('Could not create vendor in Odoo:', e)
+      }
+    }
+
     const newExpense: ExpenseLine = {
       ...currentExpense,
+      vendorId,
+      vendorName,
       id: Date.now().toString(),
     }
 
@@ -153,6 +201,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       id: '',
       description: '',
       categoryId: undefined,
+      vendorId: undefined,
       vendorName: '',
       amount: 0,
       hasVAT: false,
@@ -213,10 +262,11 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
         submit: !isDraft,
         expenses: expenseLines.map((line) => ({
           categoryId: line.categoryId,
+          vendorId: line.vendorId,
           amount: line.amount,
           description: line.description,
           receiptUrl: line.receiptUrl,
-          ...(line.vendorName ? { notes: `المورد: ${line.vendorName}` } : {}),
+          ...(line.vendorName && !line.vendorId ? { notes: `المورد: ${line.vendorName}` } : {}),
         } as any)),
       }
 
@@ -622,20 +672,44 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                   )}
                 </Box>
 
-                {/* Vendor Name */}
+                {/* Vendor Name (Odoo res.partner picker) */}
                 <Box>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                    اسم المورد / المتجر
+                    اسم المورد / المتجر {selectedCategory?.requireVendor && <span style={{ color: '#ba1a1a' }}>*</span>}
                   </Typography>
-                  <TextField
-                    fullWidth
+                  <Autocomplete
                     size="small"
-                    placeholder="مثال: شركة سمسا للنقل السريع"
-                    value={currentExpense.vendorName}
-                    onChange={(e) => setCurrentExpense({ ...currentExpense, vendorName: e.target.value })}
-                    InputProps={{
-                      startAdornment: <Storefront sx={{ mr: 1, color: 'text.secondary' }} />,
+                    freeSolo
+                    options={vendors}
+                    loading={vendorsLoading}
+                    getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
+                    inputValue={currentExpense.vendorName || ''}
+                    onInputChange={(_e, value, reason) => {
+                      setCurrentExpense({ ...currentExpense, vendorName: value, vendorId: reason === 'reset' ? currentExpense.vendorId : undefined })
+                      setVendorSearch(value)
                     }}
+                    onChange={async (_e, value) => {
+                      if (value && typeof value !== 'string') {
+                        setCurrentExpense({ ...currentExpense, vendorId: value.id, vendorName: value.name })
+                      }
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="مثال: شركة سمسا للنقل السريع"
+                        error={!!errors.vendorId}
+                        helperText={errors.vendorId || 'ابحث في موردي Odoo — اكتب اسماً جديداً لإنشائه عند الإرسال'}
+                        InputProps={{
+                          ...params.InputProps,
+                          startAdornment: (
+                            <>
+                              <Storefront sx={{ mr: 1, color: 'text.secondary' }} />
+                              {params.InputProps.startAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
                   />
                 </Box>
 

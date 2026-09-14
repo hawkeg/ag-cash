@@ -69,19 +69,135 @@ const updateExpenseSchema = Joi.object({
   receiptUrl: Joi.string().optional()
 });
 
+// Translated fields can come back as {en_US: '...'} maps via XML-RPC
+const transValue = (v: any): string => {
+  if (v && typeof v === 'object') {
+    return v.ar_001 || v.ar || Object.values(v)[0] as string || '';
+  }
+  return v || '';
+};
+
+const mapCategory = (c: any) => ({
+  id: c.id,
+  odooCategoryId: c.id,
+  name: transValue(c.name),
+  nameAr: undefined,
+  isActive: c.active !== false,
+  requireVendor: !!c.require_vendor,
+  requireAttachment: !!c.require_attachment,
+});
+
+const CATEGORY_FIELDS = ['id', 'name', 'active', 'require_vendor', 'require_attachment'];
+
 // Expense categories (lookup for forms) - must be before /:id
-router.get('/categories', asyncHandler(async (_req: Request, res: Response) => {
+// Scoped to the holder's allowed categories (expense_category_ids) when set
+router.get('/categories', asyncHandler(async (req: Request, res: Response) => {
+  const holderId = getHolderId(req);
   const auth = await odooAuthenticate();
+
+  const domain: any[] = [['active', '=', true]];
+
+  if (holderId) {
+    const holders = await search_read(auth, {
+      model: 'ems.petty.holder',
+      domain: [['id', '=', holderId]],
+      fields: ['expense_category_ids'],
+      limit: 1,
+    });
+    const allowed: number[] = holders[0]?.expense_category_ids || [];
+    if (allowed.length) {
+      domain.push(['id', 'in', allowed]);
+    }
+  }
+
   const rows = await search_read(auth, {
     model: CATEGORY_MODEL,
-    domain: [['active', '=', true]],
-    fields: ['id', 'name'],
+    domain,
+    fields: CATEGORY_FIELDS,
     order: 'name',
     limit: 200,
   });
   const response: ApiResponse<any[]> = {
     success: true,
-    data: rows.map((c: any) => ({ id: c.id, odooCategoryId: c.id, name: c.name, isActive: true })),
+    data: rows.map(mapCategory),
+    timestamp: new Date(),
+  };
+  res.json(response);
+}));
+
+const categorySchema = Joi.object({
+  name: Joi.string().min(2).max(100).required(),
+  requireVendor: Joi.boolean().optional(),
+  requireAttachment: Joi.boolean().optional(),
+});
+
+// Create expense category in Odoo
+router.post('/categories', validate(categorySchema), asyncHandler(async (req: Request, res: Response) => {
+  const { name, requireVendor, requireAttachment } = req.body;
+  const auth = await odooAuthenticate();
+  try {
+    const newId = await odooCreate(auth, {
+      model: CATEGORY_MODEL,
+      data: {
+        name,
+        require_vendor: !!requireVendor,
+        require_attachment: !!requireAttachment,
+      },
+    });
+    const rows = await search_read(auth, {
+      model: CATEGORY_MODEL, domain: [['id', '=', newId]], fields: CATEGORY_FIELDS, limit: 1,
+    });
+    const response: ApiResponse<any> = { success: true, data: mapCategory(rows[0]), timestamp: new Date() };
+    res.status(201).json(response);
+  } catch (e: any) {
+    logger.error('Odoo create category failed:', e);
+    return errorResponse(res, 502, `Odoo create failed: ${e.message}`, 'ODOO_ERROR');
+  }
+}));
+
+// Update expense category
+router.put('/categories/:id', validate(categorySchema), asyncHandler(async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return errorResponse(res, 400, 'Invalid category ID', 'INVALID_ID');
+
+  const { name, requireVendor, requireAttachment } = req.body;
+  const auth = await odooAuthenticate();
+  try {
+    await odooWrite(auth, {
+      model: CATEGORY_MODEL,
+      ids: [id],
+      data: {
+        name,
+        require_vendor: !!requireVendor,
+        require_attachment: !!requireAttachment,
+      },
+    });
+    const rows = await search_read(auth, {
+      model: CATEGORY_MODEL, domain: [['id', '=', id]], fields: CATEGORY_FIELDS, limit: 1,
+    });
+    const response: ApiResponse<any> = { success: true, data: mapCategory(rows[0]), timestamp: new Date() };
+    res.json(response);
+  } catch (e: any) {
+    logger.error(`Odoo update category ${id} failed:`, e);
+    return errorResponse(res, 502, `Odoo update failed: ${e.message}`, 'ODOO_ERROR');
+  }
+}));
+
+// Archive expense category (set active=false - safer than delete)
+router.delete('/categories/:id', asyncHandler(async (req: Request, res: Response) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return errorResponse(res, 400, 'Invalid category ID', 'INVALID_ID');
+
+  const auth = await odooAuthenticate();
+  try {
+    await odooWrite(auth, { model: CATEGORY_MODEL, ids: [id], data: { active: false } });
+  } catch (e: any) {
+    logger.error(`Odoo archive category ${id} failed:`, e);
+    return errorResponse(res, 502, `Odoo archive failed: ${e.message}`, 'ODOO_ERROR');
+  }
+  const response: ApiResponse<{ message: string }> = {
+    success: true,
+    data: { message: 'Category archived' },
     timestamp: new Date(),
   };
   res.json(response);
@@ -97,7 +213,7 @@ router.get('/vendors', asyncHandler(async (req: Request, res: Response) => {
   const rows = await search_read(auth, {
     model: PARTNER_MODEL,
     domain,
-    fields: ['id', 'name', 'vat', 'l10n_sa_edi_additional_identification_number'],
+    fields: ['id', 'name', 'vat', 'phone'],
     order: 'name',
     limit: 50,
   });
@@ -112,6 +228,33 @@ router.get('/vendors', asyncHandler(async (req: Request, res: Response) => {
     timestamp: new Date(),
   };
   res.json(response);
+}));
+
+// Create a new vendor (res.partner) from the app
+const vendorSchema = Joi.object({
+  name: Joi.string().min(2).max(200).required(),
+  vat: Joi.string().max(50).optional(),
+  phone: Joi.string().max(50).optional(),
+});
+
+router.post('/vendors', validate(vendorSchema), asyncHandler(async (req: Request, res: Response) => {
+  const { name, vat, phone } = req.body;
+  const auth = await odooAuthenticate();
+  try {
+    const newId = await odooCreate(auth, {
+      model: PARTNER_MODEL,
+      data: { name, vat: vat || false, phone: phone || false, supplier_rank: 1 },
+    });
+    const response: ApiResponse<any> = {
+      success: true,
+      data: { id: newId, odooVendorId: newId, name, vat },
+      timestamp: new Date(),
+    };
+    res.status(201).json(response);
+  } catch (e: any) {
+    logger.error('Odoo create vendor failed:', e);
+    return errorResponse(res, 502, `Odoo create failed: ${e.message}`, 'ODOO_ERROR');
+  }
 }));
 
 // Get expenses by request ID - must be before /:id

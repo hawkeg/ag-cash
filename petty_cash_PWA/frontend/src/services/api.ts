@@ -133,6 +133,22 @@ export const expensesAPI = {
     const response = await api.get<ApiResponse<any[]>>('/api/expenses/vendors', { params: { search } });
     return response.data;
   },
+  createVendor: async (data: { name: string; vat?: string; phone?: string }) => {
+    const response = await api.post<ApiResponse<any>>('/api/expenses/vendors', data);
+    return response.data;
+  },
+  createCategory: async (data: { name: string; requireVendor?: boolean; requireAttachment?: boolean }) => {
+    const response = await api.post<ApiResponse<any>>('/api/expenses/categories', data);
+    return response.data;
+  },
+  updateCategory: async (id: number, data: { name: string; requireVendor?: boolean; requireAttachment?: boolean }) => {
+    const response = await api.put<ApiResponse<any>>(`/api/expenses/categories/${id}`, data);
+    return response.data;
+  },
+  deleteCategory: async (id: number) => {
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/api/expenses/categories/${id}`);
+    return response.data;
+  },
 };
 
 // Advances API
