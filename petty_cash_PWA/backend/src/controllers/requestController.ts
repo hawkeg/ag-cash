@@ -11,6 +11,7 @@ import {
   execute_kw,
 } from '../services/odoo';
 import { ApiResponse, Request, RequestType, RequestStatus, PaginatedResponse } from '../types';
+import { sendPushToHolder } from './notificationController';
 
 const router = Router();
 
@@ -415,6 +416,17 @@ router.patch('/:id/status', validate(updateStatusSchema), asyncHandler(async (re
     fields: REQUEST_FIELDS,
     limit: 1,
   });
+
+  // Fire a push notification to the holder about the status change
+  const stateLabel: Record<string, string> = {
+    submitted: 'مقدم', manager_approved: 'اعتماد المدير', finance_approved: 'اعتماد المالية',
+    posted: 'مرحّل', rejected: 'مرفوض', cancelled: 'ملغي', draft: 'مسودة',
+  };
+  sendPushToHolder(holderId, {
+    title: `طلب ${updated[0]?.name || '#' + id}`,
+    body: `تم تحديث الحالة إلى: ${stateLabel[updated[0]?.state] || updated[0]?.state}`,
+    url: `/requests/${id}`,
+  }).catch(() => {});
 
   const response: ApiResponse<Request> = { success: true, data: mapRequest(updated[0]), timestamp: new Date() };
   res.status(200).json(response);

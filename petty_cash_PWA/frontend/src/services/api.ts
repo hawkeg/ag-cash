@@ -155,6 +155,34 @@ export const expensesAPI = {
   },
 };
 
+// Notifications API
+export const notificationsAPI = {
+  getAll: async () => {
+    const response = await api.get<ApiResponse<any[]>>('/api/notifications');
+    return response.data;
+  },
+  markRead: async (entries: string[]) => {
+    const response = await api.put<ApiResponse<any>>('/api/notifications/read-all', { entries });
+    return response.data;
+  },
+  getSettings: async () => {
+    const response = await api.get<ApiResponse<any>>('/api/notifications/settings');
+    return response.data;
+  },
+  updateSettings: async (data: any) => {
+    const response = await api.put<ApiResponse<any>>('/api/notifications/settings', data);
+    return response.data;
+  },
+  getVapidKey: async () => {
+    const response = await api.get<ApiResponse<{ publicKey: string | null }>>('/api/notifications/vapid-key');
+    return response.data;
+  },
+  subscribe: async (subscription: PushSubscriptionJSON) => {
+    const response = await api.post<ApiResponse<any>>('/api/notifications/subscribe', subscription);
+    return response.data;
+  },
+};
+
 // Advances API
 export const advancesAPI = {
   getAll: async (params?: { page?: number; limit?: number; status?: AdvanceStatus }) => {

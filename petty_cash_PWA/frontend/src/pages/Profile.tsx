@@ -48,7 +48,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AuthUser } from '@shared/types';
-import { authAPI, expensesAPI } from '../services/api';
+import { authAPI, expensesAPI, notificationsAPI } from '../services/api';
 import api from '../services/api';
 
 interface UserProfile extends AuthUser {
@@ -91,12 +91,78 @@ const Profile: React.FC = () => {
         }
       })
       .catch(() => {});
+
+    // Load notification settings from backend
+    notificationsAPI.getSettings()
+      .then((res) => {
+        const s = res.data;
+        if (s) {
+          setNotificationsEnabled(s.pushEnabled !== false);
+          setEmailNotifications(s.approvals !== false);
+          setRequestUpdates(s.statusChanges !== false);
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  // Settings state
+  const urlBase64ToUint8Array = (base64: string) => {
+    const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+    const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  };
+
+  const subscribePush = async (): Promise<boolean> => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      showSnackbar('الإشعارات الفورية غير مدعومة في هذا المتصفح');
+      return false;
+    }
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        showSnackbar('تم رفض إذن الإشعارات');
+        return false;
+      }
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      const keyRes = await notificationsAPI.getVapidKey();
+      const key = keyRes.data?.publicKey;
+      if (!key) return false;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key),
+      });
+      await notificationsAPI.subscribe(sub.toJSON() as any);
+      return true;
+    } catch (e) {
+      console.error('Push subscribe failed:', e);
+      showSnackbar('فشل تفعيل الإشعارات الفورية');
+      return false;
+    }
+  };
+
+  const updateNotifSetting = async (patch: any) => {
+    try {
+      await notificationsAPI.updateSettings(patch);
+    } catch {}
+  };
+
+  const handlePushToggle = async (enabled: boolean) => {
+    setPushBusy(true);
+    if (enabled) {
+      const ok = await subscribePush();
+      setNotificationsEnabled(ok);
+      if (ok) updateNotifSetting({ pushEnabled: true });
+    } else {
+      setNotificationsEnabled(false);
+      updateNotifSetting({ pushEnabled: false });
+    }
+    setPushBusy(false);
+  };
+
+  // Settings state (synced with backend)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [requestUpdates, setRequestUpdates] = useState(true);
+  const [pushBusy, setPushBusy] = useState(false);
   const [language, setLanguage] = useState<'ar' | 'en'>('ar');
   const [darkMode, setDarkMode] = useState(false);
 
@@ -386,14 +452,15 @@ const Profile: React.FC = () => {
                 </ListItemIcon>
                 <ListItemText
                   primary="الإشعارات الفورية"
-                  secondary="تنبيهات داخل التطبيق"
+                  secondary="تنبيهات push على الجهاز"
                   primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
                 />
                 <ListItemSecondaryAction>
                   <Switch
                     edge="end"
                     checked={notificationsEnabled}
-                    onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                    disabled={pushBusy}
+                    onChange={(e) => handlePushToggle(e.target.checked)}
                     color="primary"
                   />
                 </ListItemSecondaryAction>
@@ -406,15 +473,18 @@ const Profile: React.FC = () => {
                   </Avatar>
                 </ListItemIcon>
                 <ListItemText
-                  primary="إشعارات البريد الإلكتروني"
-                  secondary="ملخصات وتنبيهات عبر البريد"
+                  primary="إشعارات الاعتمادات"
+                  secondary="تنبيه عند اعتماد المدير أو المالية"
                   primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
                 />
                 <ListItemSecondaryAction>
                   <Switch
                     edge="end"
                     checked={emailNotifications}
-                    onChange={(e) => setEmailNotifications(e.target.checked)}
+                    onChange={(e) => {
+                      setEmailNotifications(e.target.checked);
+                      updateNotifSetting({ approvals: e.target.checked });
+                    }}
                     color="primary"
                   />
                 </ListItemSecondaryAction>
@@ -435,7 +505,10 @@ const Profile: React.FC = () => {
                   <Switch
                     edge="end"
                     checked={requestUpdates}
-                    onChange={(e) => setRequestUpdates(e.target.checked)}
+                    onChange={(e) => {
+                      setRequestUpdates(e.target.checked);
+                      updateNotifSetting({ statusChanges: e.target.checked });
+                    }}
                     color="primary"
                   />
                 </ListItemSecondaryAction>

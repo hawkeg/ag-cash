@@ -10,6 +10,7 @@ import requestController from './controllers/requestController';
 import expenseController from './controllers/expenseController';
 import advanceController from './controllers/advanceController';
 import dashboardController from './controllers/dashboardController';
+import notificationController from './controllers/notificationController';
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -48,6 +49,7 @@ app.use('/api/requests', authenticate, requestController);
 app.use('/api/expenses', authenticate, expenseController);
 app.use('/api/advances', authenticate, advanceController);
 app.use('/api/dashboard', authenticate, dashboardController);
+app.use('/api/notifications', authenticate, notificationController);
 
 // Error handling
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

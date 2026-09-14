@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { notificationsAPI } from '../services/api'
 import {
   AppBar,
   Toolbar,
@@ -30,6 +32,42 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, showMenuButton = false }) 
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const navigate = useNavigate()
+
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  const loadNotifications = () => {
+    notificationsAPI.getAll()
+      .then((res) => setNotifications(res.data ?? []))
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    loadNotifications()
+    const t = setInterval(loadNotifications, 60000)
+    return () => clearInterval(t)
+  }, [])
+
+  const handleNotifOpen = (e: React.MouseEvent<HTMLElement>) => {
+    setNotifAnchor(e.currentTarget)
+    loadNotifications()
+  }
+
+  const handleNotifClose = () => {
+    setNotifAnchor(null)
+    const unread = notifications.filter((n) => !n.read)
+    if (unread.length) {
+      notificationsAPI.markRead(unread.map((n) => `${n.id}:${n.state}`)).catch(() => {})
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    }
+  }
+
+  const handleNotifClick = (n: any) => {
+    handleNotifClose()
+    if (n.url) navigate(n.url)
+  }
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
@@ -155,11 +193,46 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, showMenuButton = false }) 
             color="inherit"
             size="small"
             sx={{ color: 'text.secondary' }}
+            onClick={handleNotifOpen}
           >
-            <Badge badgeContent={3} color="error">
+            <Badge badgeContent={unreadCount || undefined} color="error">
               <NotificationsIcon />
             </Badge>
           </IconButton>
+
+          <Menu
+            anchorEl={notifAnchor}
+            open={Boolean(notifAnchor)}
+            onClose={handleNotifClose}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            PaperProps={{ sx: { minWidth: 300, maxWidth: 360, maxHeight: 400, mt: 1, borderRadius: 2 } }}
+          >
+            {notifications.length === 0 && (
+              <MenuItem disabled>
+                <Typography variant="body2" color="text.secondary">لا توجد إشعارات</Typography>
+              </MenuItem>
+            )}
+            {notifications.slice(0, 20).map((n) => (
+              <MenuItem
+                key={n.id}
+                onClick={() => handleNotifClick(n)}
+                sx={{ whiteSpace: 'normal', alignItems: 'flex-start', py: 1.2, bgcolor: n.read ? 'transparent' : 'action.hover' }}
+              >
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: n.read ? 400 : 700 }}>
+                    {n.title}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    {n.body}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {n.date ? new Date(n.date + 'Z').toLocaleString('ar-SA') : ''}
+                  </Typography>
+                </Box>
+              </MenuItem>
+            ))}
+          </Menu>
 
           {/* User Menu */}
           <IconButton
