@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   CircularProgress,
   Alert,
+  Container,
 } from '@mui/material'
 import {
   Search as SearchIcon,
@@ -27,18 +28,20 @@ import {
   Add as AddIcon,
   Pending as PendingIcon,
   Verified as VerifiedIcon,
-  EditDocument as EditDocumentIcon,
+  Edit as EditDocumentIcon,
   DoneAll as DoneAllIcon,
   Info as InfoIcon,
-  Edit as EditIcon,
   Close as CloseIcon,
-  Refresh as RefreshIcon,
   Dashboard as DashboardIcon,
   Description as DescriptionIcon,
   History as HistoryIcon,
   Person as PersonIcon,
+  ReceiptLong,
+  AttachFile,
+  Notifications,
+  Edit as EditIcon,
 } from '@mui/icons-material'
-import { Request, RequestStatus } from '../../../shared/types'
+import { Request, RequestStatus } from '@shared/types'
 
 interface RequestsProps {
   // Placeholder for future props like API service
@@ -370,7 +373,7 @@ const Requests: React.FC<RequestsProps> = () => {
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconButton size="small">
-                <NotificationsIcon />
+                <Notifications />
               </IconButton>
               <Box 
                 sx={{ 
@@ -684,7 +687,7 @@ const Requests: React.FC<RequestsProps> = () => {
                     }}>
                       <Box sx={{ display: 'flex', gap: 1.5 }}>
                         <Chip
-                          icon={<ReceiptLongIcon fontSize="small" />}
+                          icon={<ReceiptLong fontSize="small" />}
                           label={`${request.expenses?.length || 0} بنود مصاريف`}
                           size="small"
                           sx={{
@@ -694,7 +697,7 @@ const Requests: React.FC<RequestsProps> = () => {
                         />
                         {(request.expenses?.length || 0) > 0 && (
                           <Chip
-                            icon={<AttachFileIcon fontSize="small" />}
+                            icon={<AttachFile fontSize="small" />}
                             label="مرفقين (2)"
                             size="small"
                             sx={{

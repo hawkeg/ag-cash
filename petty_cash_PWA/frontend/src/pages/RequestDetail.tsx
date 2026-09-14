@@ -686,7 +686,16 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                       }}
                     >
                       <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'white' }}>
-                        <Typography variant="caption" sx={{ color: 'white', truncate: true, maxWidth: '70%' }}>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: 'white', 
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '70%'
+                          }}
+                        >
                           {expense.description.substring(0, 15)}...
                         </Typography>
                         <ZoomInIcon fontSize="small" />
