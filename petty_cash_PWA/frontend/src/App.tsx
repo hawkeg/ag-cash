@@ -1,5 +1,5 @@
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Requests from './pages/Requests'
@@ -98,11 +98,7 @@ function App() {
           } />
           <Route path="/create-request" element={
             <Layout>
-              <CreateRequest 
-                categories={[]}
-                onSubmit={async () => {}}
-                onSaveDraft={async () => {}}
-              />
+              <CreateRequest />
             </Layout>
           } />
           <Route path="/requests/:id" element={
@@ -130,6 +126,7 @@ function App() {
               <Profile />
             </Layout>
           } />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
