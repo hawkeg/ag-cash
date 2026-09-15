@@ -499,7 +499,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 600, fontFamily: 'Cairo' }}>
-            طلب صرف عهدة جديد
+            تسجيل تسوية عهدة جديد
           </Typography>
           <Typography variant="caption" color="text.secondary">
             طلب جديد — يتم إنشاء الرقم تلقائياً في Odoo
@@ -511,6 +511,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
           onClick={() => handleSubmit(true)}
           disabled={isSubmitting}
           size="small"
+          sx={{ '& .MuiButton-startIcon': { marginInlineEnd: '6px', marginInlineStart: 0 } }}
         >
           حفظ مسودة
         </Button>
