@@ -342,7 +342,7 @@ const Dashboard: React.FC = () => {
             py: 1.5,
           }}
         >
-          سلفة
+          عهدة مخصصة
         </Button>
       </Box>
     </Box>
