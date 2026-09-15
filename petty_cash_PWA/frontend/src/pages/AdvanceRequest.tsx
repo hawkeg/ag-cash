@@ -150,7 +150,7 @@ const AdvanceRequest: React.FC<AdvanceRequestProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'primary.main'
+                color: '#e8f5f2'
               }}>
                 <AccountBalanceWallet />
               </Box>
@@ -241,29 +241,29 @@ const AdvanceRequest: React.FC<AdvanceRequestProps> = ({
         </Card>
 
         {/* Summary Card */}
-        <Card elevation={1} sx={{ mb: 3, bgcolor: 'primary.light' }}>
+        <Card elevation={1} sx={{ mb: 3, bgcolor: 'primary.light', color: '#e8f5f2' }}>
           <CardContent>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-              <Description color="primary" />
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              <Description sx={{ color: '#e8f5f2' }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#e8f5f2' }}>
                 ملخص الطلب
               </Typography>
             </Box>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 2, borderColor: 'rgba(232,245,242,0.3)' }} />
             <Grid container spacing={2}>
               <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'rgba(232,245,242,0.75)' }}>
                   نوع الطلب
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#e8f5f2' }}>
                   عهدة مخصصة
                 </Typography>
               </Grid>
               <Grid item xs={6}>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" sx={{ color: 'rgba(232,245,242,0.75)' }}>
                   المبلغ المطلوب
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#e8f5f2' }}>
                   <span className="number">{formatCurrency(formData.amount || 0)}</span>
                 </Typography>
               </Grid>

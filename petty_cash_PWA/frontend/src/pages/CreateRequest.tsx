@@ -530,7 +530,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'primary.main'
+                  color: '#e8f5f2'
                 }}>
                   <Badge fontSize="small" />
                 </Box>
@@ -570,7 +570,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'primary.main',
+                    color: '#e8f5f2',
                     fontWeight: 'bold',
                     fontSize: '0.75rem'
                   }}>
@@ -660,7 +660,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
               borderWidth: 2,
               borderColor: 'primary.main',
               bgcolor: 'primary.light',
-              color: 'primary.main',
+              color: '#e8f5f2',
               fontWeight: 600,
               mb: 2,
               '&:hover': {
@@ -1017,7 +1017,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                           border: 2,
                           borderColor: 'primary.main',
                           bgcolor: 'primary.light',
-                          color: 'primary.main',
+                          color: '#e8f5f2',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
