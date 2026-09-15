@@ -290,6 +290,16 @@ const Requests: React.FC<RequestsProps> = () => {
     }).format(amount)
   }
 
+  const handleCancelAdvance = async (adv: Advance) => {
+    if (!window.confirm(`إلغاء طلب العهدة المخصصة ${adv.name || ''}؟`)) return
+    try {
+      await advancesAPI.updateStatus(adv.id, AdvanceStatus.CANCELLED)
+      fetchRequests(true)
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'تعذر إلغاء الطلب')
+    }
+  }
+
   const getAdvanceStatusLabel = (status: AdvanceStatus) => {
     switch (status) {
       case AdvanceStatus.PENDING: return 'قيد المراجعة'
@@ -787,11 +797,23 @@ const Requests: React.FC<RequestsProps> = () => {
                         <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
                           <span className="number">{formatAmount(adv.amount)}</span> ر.س
                         </Typography>
-                        <Chip
-                          label={getAdvanceStatusLabel(adv.status)}
-                          size="small"
-                          color={getAdvanceStatusColor(adv.status) as any}
-                        />
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                          <Chip
+                            label={getAdvanceStatusLabel(adv.status)}
+                            size="small"
+                            color={getAdvanceStatusColor(adv.status) as any}
+                          />
+                          {adv.status === AdvanceStatus.PENDING && (
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={() => handleCancelAdvance(adv)}
+                              sx={{ minWidth: 0, fontSize: '0.7rem' }}
+                            >
+                              إلغاء
+                            </Button>
+                          )}
+                        </Box>
                       </Box>
                     </Box>
                   </CardContent>
