@@ -85,12 +85,12 @@ router.get('/holders', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 const loginSchema = Joi.object({
-  holderId: Joi.number().integer().positive().required(),
+  identifier: Joi.string().trim().min(2).required(),
   pin: Joi.string().pattern(/^\d{4,6}$/).optional(),
 });
 
 const pinSetupSchema = Joi.object({
-  holderId: Joi.number().integer().positive().required(),
+  identifier: Joi.string().trim().min(2).required(),
   pin: Joi.string().pattern(/^\d{4,6}$/).required(),
 });
 
@@ -123,19 +123,33 @@ const fetchHolder = async (holderId: number): Promise<HolderRow | undefined> => 
   return rows[0] as HolderRow | undefined;
 };
 
-// Login by selecting an Odoo petty cash holder + PIN
+// Resolve a holder by identifier: holder code (PCH/26/0002) or employee
+// badge/display name (employee names carry the badge prefix like "[1000480820]Name").
+const fetchHolderByIdentifier = async (identifier: string): Promise<HolderRow | undefined> => {
+  const auth = await odooAuthenticate();
+  const rows = await search_read(auth, {
+    model: 'ems.petty.holder',
+    domain: ['|', ['name', '=', identifier], ['employee_id', 'ilike', identifier]],
+    fields: HOLDER_FIELDS,
+    limit: 2,
+  });
+  // Ambiguous identifiers must not resolve to a random holder
+  return rows.length === 1 ? (rows[0] as HolderRow) : undefined;
+};
+
+// Login by employee badge / holder code + PIN
 router.post('/login', validate(loginSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { holderId, pin } = req.body;
+  const { identifier, pin } = req.body;
 
   try {
-    const row = await fetchHolder(holderId);
+    const row = await fetchHolderByIdentifier(identifier);
     if (!row) {
       const response: ApiResponse<null> = {
         success: false,
-        error: { message: 'Holder not found', code: 'HOLDER_NOT_FOUND' },
+        error: { message: 'Invalid credentials', code: 'INVALID_CREDENTIALS' },
         timestamp: new Date(),
       };
-      return res.status(404).json(response);
+      return res.status(401).json(response);
     }
 
     if (row.state !== 'active') {
@@ -147,7 +161,7 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req: Request, r
       return res.status(403).json(response);
     }
 
-    if (!hasPin(holderId)) {
+    if (!hasPin(row.id)) {
       const response: ApiResponse<null> = {
         success: false,
         error: { message: 'PIN setup required', code: 'PIN_SETUP_REQUIRED' },
@@ -165,7 +179,7 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req: Request, r
       return res.status(401).json(response);
     }
 
-    const check = verifyPin(holderId, pin);
+    const check = verifyPin(row.id, pin);
     if (!check.ok) {
       const locked = check.lockedUntil;
       const response: ApiResponse<null> = {
@@ -201,10 +215,20 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req: Request, r
 
 // First-time PIN setup — only allowed while the holder has no PIN yet
 router.post('/setup-pin', validate(pinSetupSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { holderId, pin } = req.body;
+  const { identifier, pin } = req.body;
 
   try {
-    if (hasPin(holderId)) {
+    const row = await fetchHolderByIdentifier(identifier);
+    if (!row || row.state !== 'active') {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: { message: 'Invalid credentials', code: 'INVALID_CREDENTIALS' },
+        timestamp: new Date(),
+      };
+      return res.status(401).json(response);
+    }
+
+    if (hasPin(row.id)) {
       const response: ApiResponse<null> = {
         success: false,
         error: { message: 'PIN already set — log in normally', code: 'PIN_ALREADY_SET' },
@@ -213,17 +237,7 @@ router.post('/setup-pin', validate(pinSetupSchema), asyncHandler(async (req: Req
       return res.status(409).json(response);
     }
 
-    const row = await fetchHolder(holderId);
-    if (!row || row.state !== 'active') {
-      const response: ApiResponse<null> = {
-        success: false,
-        error: { message: 'Holder not found or inactive', code: 'HOLDER_INVALID' },
-        timestamp: new Date(),
-      };
-      return res.status(404).json(response);
-    }
-
-    setPin(holderId, pin);
+    setPin(row.id, pin);
     const holder = mapHolder(row);
     logger.info(`PIN set for holder ${holder.id} (${holder.employeeName})`);
 

@@ -21,17 +21,18 @@ const req = async (path: string, opts: RequestInit = {}) => {
 
 const TEST_PIN = '1234';
 const TEST_HOLDER = 4;
+const TEST_IDENTIFIER = 'PCH/26/0004';
 
 const login = async () => {
   let res = await req('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ holderId: TEST_HOLDER, pin: TEST_PIN }),
+    body: JSON.stringify({ identifier: TEST_IDENTIFIER, pin: TEST_PIN }),
   });
   if (res.status === 428) {
     // First run — set the test PIN, which also returns a token
     res = await req('/api/auth/setup-pin', {
       method: 'POST',
-      body: JSON.stringify({ holderId: TEST_HOLDER, pin: TEST_PIN }),
+      body: JSON.stringify({ identifier: TEST_IDENTIFIER, pin: TEST_PIN }),
     });
   }
   return res;
@@ -75,7 +76,7 @@ describe('auth', () => {
   it('rejects a wrong PIN', async () => {
     const { status } = await req('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ holderId: TEST_HOLDER, pin: '9999' }),
+      body: JSON.stringify({ identifier: TEST_IDENTIFIER, pin: '9999' }),
     });
     // 9999 may not be the stored pin; if it matches, skip assertion
     if (status === 200) return;
@@ -85,9 +86,9 @@ describe('auth', () => {
   it('rejects login for a non-existent holder', async () => {
     const { status } = await req('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ holderId: 999999, pin: TEST_PIN }),
+      body: JSON.stringify({ identifier: 'NOPE-999999', pin: TEST_PIN }),
     });
-    expect([400, 404, 502]).toContain(status);
+    expect([400, 401, 404, 502]).toContain(status);
   });
 });
 

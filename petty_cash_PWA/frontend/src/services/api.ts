@@ -100,12 +100,12 @@ export const authAPI = {
     const response = await api.get<ApiResponse<any[]>>('/api/auth/holders', { params: { search } });
     return response.data;
   },
-  login: async (holderId: number, pin?: string) => {
-    const response = await api.post<ApiResponse<{ token: string; user: any }>>('/api/auth/login', { holderId, pin });
+  login: async (identifier: string, pin?: string) => {
+    const response = await api.post<ApiResponse<{ token: string; user: any }>>('/api/auth/login', { identifier, pin });
     return response.data;
   },
-  setupPin: async (holderId: number, pin: string) => {
-    const response = await api.post<ApiResponse<{ token: string; user: any }>>('/api/auth/setup-pin', { holderId, pin });
+  setupPin: async (identifier: string, pin: string) => {
+    const response = await api.post<ApiResponse<{ token: string; user: any }>>('/api/auth/setup-pin', { identifier, pin });
     return response.data;
   },
   changePin: async (holderId: number, currentPin: string, pin: string) => {
