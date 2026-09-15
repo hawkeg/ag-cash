@@ -35,6 +35,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Request, RequestStatus } from '@shared/types';
 import api from '../services/api';
+import SarSymbol from '../components/SarSymbol';
 
 interface DashboardStats {
   totalBalance: number;
@@ -104,8 +105,8 @@ const Dashboard: React.FC = () => {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-SA', {
-      style: 'currency',
-      currency: 'SAR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
@@ -178,7 +179,7 @@ const Dashboard: React.FC = () => {
             الرصيد المتاح
           </Typography>
           <Typography variant="h3" component="div" sx={{ fontWeight: 700, mb: 2 }}>
-            <span className="number">{formatCurrency(stats.totalBalance)}</span>
+            <span className="number">{formatCurrency(stats.totalBalance)}</span> <SarSymbol />
           </Typography>
           <Stack direction="row" spacing={2}>
             <Box>
@@ -186,7 +187,7 @@ const Dashboard: React.FC = () => {
                 المصروفات هذا الشهر
               </Typography>
               <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                <span className="number">{formatCurrency(stats.totalSpentThisMonth)}</span>
+                <span className="number">{formatCurrency(stats.totalSpentThisMonth)}</span> <SarSymbol />
               </Typography>
             </Box>
             <Divider orientation="vertical" flexItem sx={{ bgcolor: 'rgba(255,255,255,0.3)' }} />
@@ -230,7 +231,7 @@ const Dashboard: React.FC = () => {
           <Paper sx={{ p: 2, textAlign: 'center' }}>
             <TrendingUp sx={{ fontSize: 32, color: '#006a4e', mb: 1 }} />
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              <span className="number">{formatCurrency(stats.totalSpentThisMonth)}</span>
+              <span className="number">{formatCurrency(stats.totalSpentThisMonth)}</span> <SarSymbol />
             </Typography>
             <Typography variant="caption" color="text.secondary">
               إجمالي المصروفات
@@ -241,7 +242,7 @@ const Dashboard: React.FC = () => {
           <Paper sx={{ p: 2, textAlign: 'center' }}>
             <AccountBalanceWallet sx={{ fontSize: 32, color: '#235b54', mb: 1 }} />
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              <span className="number">{formatCurrency(stats.totalBalance)}</span>
+              <span className="number">{formatCurrency(stats.totalBalance)}</span> <SarSymbol />
             </Typography>
             <Typography variant="caption" color="text.secondary">
               الرصيد المتاح
@@ -290,7 +291,7 @@ const Dashboard: React.FC = () => {
                     secondary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          <span className="number">{formatCurrency(request.amount)}</span>
+                          <span className="number">{formatCurrency(request.amount)}</span> <SarSymbol />
                         </Typography>
                         <Chip
                           label={getStatusLabel(request.status)}
@@ -349,7 +350,7 @@ const Dashboard: React.FC = () => {
                     }
                   />
                   <Typography variant="body2" sx={{ fontWeight: 700, color: '#006a4e' }}>
-                    <span className="number">+{formatCurrency(r.amount)}</span>
+                    <span className="number">+{formatCurrency(r.amount)}</span> <SarSymbol />
                   </Typography>
                 </ListItem>
               ))}

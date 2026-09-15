@@ -49,6 +49,7 @@ import {
 } from '@mui/icons-material'
 import { Request, RequestStatus, Expense } from '../../../shared/types'
 import { requestsAPI, expensesAPI } from '../services/api'
+import SarSymbol from '../components/SarSymbol'
 
 interface RequestDetailProps {
   // Placeholder for future props like API service
@@ -478,7 +479,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                     <span className="number">{formatAmount(request.amount)}</span>
                   </Typography>
                   <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-                    ر.س
+                    <SarSymbol />
                   </Typography>
                 </Box>
               </Box>
@@ -695,7 +696,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                         مصروف عام • ضريبي
                       </Typography>
                       <Chip
-                        label={`ضريبة: ${formatAmount(calculateVAT(expense.amount))} ر.س`}
+                        label={<Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>ضريبة: {formatAmount(calculateVAT(expense.amount))} <SarSymbol /></Box>}
                         size="small"
                         sx={{
                           mt: 1,
@@ -712,7 +713,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                       <span className="number">{formatAmount(expense.amount)}</span>
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      ر.س
+                      <SarSymbol />
                     </Typography>
                   </Box>
                 </Box>

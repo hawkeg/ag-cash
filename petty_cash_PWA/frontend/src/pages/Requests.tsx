@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material'
 import { Request, RequestStatus, AdvanceStatus, Advance } from '@shared/types'
 import { requestsAPI, advancesAPI } from '../services/api'
+import SarSymbol from '../components/SarSymbol'
 
 interface RequestsProps {
   // Placeholder for future props like API service
@@ -474,7 +475,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 إجمالي مصروفات الشهر
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5 }}>
-                <span className="number">{formatAmount(monthExpensesTotal)}</span> ر.س
+                <span className="number">{formatAmount(monthExpensesTotal)}</span> <SarSymbol />
               </Typography>
             </Paper>
           </Grid>
@@ -484,7 +485,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 المطالبات المعلقة
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.warning.dark }}>
-                <span className="number">{formatAmount(pendingAmount)}</span> ر.س
+                <span className="number">{formatAmount(pendingAmount)}</span> <SarSymbol />
               </Typography>
             </Paper>
           </Grid>
@@ -494,7 +495,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 طلبات معتمدة
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.success.dark }}>
-                <span className="number">{formatAmount(approvedAmount)}</span> ر.س
+                <span className="number">{formatAmount(approvedAmount)}</span> <SarSymbol />
               </Typography>
             </Paper>
           </Grid>
@@ -504,7 +505,7 @@ const Requests: React.FC<RequestsProps> = () => {
                 الرصيد المتاح بالعهدة
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.primary.main }}>
-                <span className="number">{formatAmount(availableBalance)}</span> ر.س
+                <span className="number">{formatAmount(availableBalance)}</span> <SarSymbol />
               </Typography>
             </Paper>
           </Grid>
@@ -669,7 +670,7 @@ const Requests: React.FC<RequestsProps> = () => {
                       {!isDraft && (
                         <Box sx={{ textAlign: 'left' }}>
                           <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                            <span className="number">{formatAmount(request.amount)}</span> ر.س
+                            <span className="number">{formatAmount(request.amount)}</span> <SarSymbol />
                           </Typography>
                         </Box>
                       )}
@@ -705,7 +706,7 @@ const Requests: React.FC<RequestsProps> = () => {
                       </Box>
                       <Box sx={{ textAlign: 'left' }}>
                         <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                          <span className="number">{formatAmount(adv.amount)}</span> ر.س
+                          <span className="number">{formatAmount(adv.amount)}</span> <SarSymbol />
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                           <Chip

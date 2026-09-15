@@ -37,6 +37,7 @@ import {
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material'
 import { Request, RequestStatus } from '@shared/types'
+import SarSymbol from '../components/SarSymbol'
 import { requestsAPI } from '../services/api'
 
 interface HistoryProps {
@@ -371,7 +372,7 @@ const History: React.FC<HistoryProps> = () => {
             </Typography>
             <Typography sx={{ fontWeight: 'bold', mt: 0.5, fontSize: { xs: '0.9rem', sm: '1.25rem' }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               <span className="number">{formatAmount(stats.totalAmount)}</span>
-              <Typography component="span" sx={{ fontSize: '0.7em', fontWeight: 'normal', color: 'text.secondary' }}> ر.س</Typography>
+              <Typography component="span" sx={{ fontSize: '0.9em', fontWeight: 'normal', color: 'text.secondary' }}> <SarSymbol /></Typography>
             </Typography>
           </Paper>
         </Grid>
@@ -649,7 +650,7 @@ const History: React.FC<HistoryProps> = () => {
                     </Box>
                     <Box sx={{ textAlign: 'left' }}>
                       <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                        <span className="number">{formatAmount(request.amount)}</span> ر.س
+                        <span className="number">{formatAmount(request.amount)}</span> <SarSymbol />
                       </Typography>
                     </Box>
                   </Box>

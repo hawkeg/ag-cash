@@ -56,6 +56,7 @@ import {
   Expense 
 } from '@shared/types'
 import { requestsAPI, expensesAPI } from '../services/api'
+import SarSymbol from '../components/SarSymbol'
 
 interface ExpenseLine {
   id: string
@@ -714,7 +715,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     </Box>
                     <Box sx={{ textAlign: 'left' }}>
                       <Typography variant="h6" sx={{ fontFamily: 'Inter', fontWeight: 'bold' }}>
-                        {expense.amount.toFixed(2)} <Typography variant="caption" color="text.secondary">ر.س</Typography>
+                        {expense.amount.toFixed(2)} <Typography variant="caption" color="text.secondary"><SarSymbol /></Typography>
                       </Typography>
                       {expense.hasVAT && (
                         <Chip 
@@ -918,7 +919,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                 <Paper sx={{ p: 2, bgcolor: 'action.hover', border: 1, borderColor: 'divider' }}>
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                      المبلغ الإجمالي (ر.س) <span style={{ color: '#ba1a1a' }}>*</span>
+                      المبلغ الإجمالي <SarSymbol /> <span style={{ color: '#ba1a1a' }}>*</span>
                     </Typography>
                     <TextField
                       fullWidth
@@ -931,7 +932,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                       helperText={errors.amount}
                       InputProps={{
                         sx: { fontFamily: 'Inter', textAlign: 'left' },
-                        startAdornment: <Typography sx={{ mr: 1, fontWeight: 'bold', color: 'text.secondary' }}>ر.س</Typography>,
+                        startAdornment: <Typography component="span" sx={{ mr: 1, fontWeight: 'bold', color: 'text.secondary' }}><SarSymbol /></Typography>,
                       }}
                     />
                   </Box>
@@ -953,7 +954,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                         مبلغ الضريبة المحسوب
                       </Typography>
                       <Typography variant="subtitle2" sx={{ fontFamily: 'Inter', fontWeight: 'bold', color: 'primary.main' }}>
-                        {(currentExpense.amount * 0.15).toFixed(2)} ر.س
+                        {(currentExpense.amount * 0.15).toFixed(2)} <SarSymbol />
                       </Typography>
                     </Box>
                   </Box>
@@ -1175,7 +1176,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                   المجموع قبل الضريبة ({expenseLines.length} بنود):
                 </Typography>
                 <Typography variant="body2" sx={{ fontFamily: 'Inter', fontWeight: 600 }}>
-                  {subtotal.toFixed(2)} ر.س
+                  {subtotal.toFixed(2)} <SarSymbol />
                 </Typography>
               </Box>
 
@@ -1184,7 +1185,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                   ضريبة القيمة المضافة (15%):
                 </Typography>
                 <Typography variant="body2" sx={{ fontFamily: 'Inter', fontWeight: 600, color: 'primary.main' }}>
-                  {vat.toFixed(2)} ر.س
+                  {vat.toFixed(2)} <SarSymbol />
                 </Typography>
               </Box>
 
@@ -1199,7 +1200,7 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
                     {total.toFixed(2)}
                   </Typography>
                   <Typography variant="body2" sx={{ fontFamily: 'Tajawal', fontWeight: 600, color: 'primary.main', mr: 0.5 }}>
-                    ر.س
+                    <SarSymbol />
                   </Typography>
                 </Box>
               </Box>

@@ -24,6 +24,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { CreateAdvanceDto } from '@shared/types'
 import { advancesAPI } from '../services/api'
+import SarSymbol from '../components/SarSymbol';
 
 interface AdvanceRequestProps {
   onSubmit?: (advance: CreateAdvanceDto) => Promise<void>
@@ -94,8 +95,8 @@ const AdvanceRequest: React.FC<AdvanceRequestProps> = ({
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-SA', {
-      style: 'currency',
-      currency: 'SAR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount)
   }
 
@@ -205,7 +206,7 @@ const AdvanceRequest: React.FC<AdvanceRequestProps> = ({
                 />
                 {formData.amount > 0 && (
                   <Typography variant="body2" color="primary.main" sx={{ mt: 1, fontWeight: 600 }}>
-                    المبلغ: <span className="number">{formatCurrency(formData.amount)}</span>
+                    المبلغ: <span className="number">{formatCurrency(formData.amount)}</span> <SarSymbol />
                   </Typography>
                 )}
               </Box>
@@ -264,7 +265,7 @@ const AdvanceRequest: React.FC<AdvanceRequestProps> = ({
                   المبلغ المطلوب
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 600, color: '#e8f5f2' }}>
-                  <span className="number">{formatCurrency(formData.amount || 0)}</span>
+                  <span className="number">{formatCurrency(formData.amount || 0)}</span> <SarSymbol />
                 </Typography>
               </Grid>
             </Grid>

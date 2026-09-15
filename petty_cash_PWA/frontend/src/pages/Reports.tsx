@@ -45,6 +45,7 @@ import {
 } from '@mui/icons-material';
 import { Request, Expense, Category, Vendor } from '@shared/types';
 import api from '../services/api';
+import SarSymbol from '../components/SarSymbol';
 
 interface CategorySpending {
   category: string;
@@ -353,7 +354,7 @@ const Reports: React.FC = () => {
               </Box>
               <Box sx={{ pt: 2, borderTop: 1, borderColor: 'rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                  حد السقف المعتمد: 15,000.00 ر.س
+                  حد السقف المعتمد: <span className="number">{formatCurrency(summary?.limitAmount ?? 0)}</span> <SarSymbol />
                 </Typography>
                 <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
                   نسبة الاستهلاك {consumptionRate}%
@@ -375,7 +376,7 @@ const Reports: React.FC = () => {
                   </Avatar>
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                  <span className="number">{formatCurrency(vatAmount)}</span> ر.س
+                  <span className="number">{formatCurrency(vatAmount)}</span> <SarSymbol />
                 </Typography>
               </Box>
               <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -400,7 +401,7 @@ const Reports: React.FC = () => {
                   </Avatar>
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                  <span className="number">{formatCurrency(dailyBurnRate)}</span> ر.س/يوم
+                  <span className="number">{formatCurrency(dailyBurnRate)}</span> <SarSymbol />/يوم
                 </Typography>
               </Box>
               <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
@@ -408,7 +409,7 @@ const Reports: React.FC = () => {
                   الرصيد المتبقي:
                 </Typography>
                 <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#235b54' }}>
-                  <span className="number">{formatCurrency(remainingBalance)}</span> ر.س
+                  <span className="number">{formatCurrency(remainingBalance)}</span> <SarSymbol />
                 </Typography>
               </Box>
             </Paper>
@@ -498,11 +499,11 @@ const Reports: React.FC = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Info sx={{ fontSize: 16, color: '#235b54' }} />
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      اليوم الأكثر صرفاً: <strong>الثلاثاء 13 مايو</strong> (مشتريات قطع صيانة طارئة)
+                      الفئة الأعلى صرفاً: <strong>{categorySpending[0]?.category ?? '—'}</strong>
                     </Typography>
                   </Box>
                   <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#235b54' }}>
-                    <span className="number">1,450</span> ر.س
+                    <span className="number">{formatCurrency(categorySpending[0]?.amount ?? 0)}</span> <SarSymbol />
                   </Typography>
                 </Box>
               </CardContent>
@@ -568,7 +569,7 @@ const Reports: React.FC = () => {
                       </Box>
                       <Box sx={{ textAlign: 'left' }}>
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                          <span className="number">{formatCurrency(cat.amount)}</span> ر.س
+                          <span className="number">{formatCurrency(cat.amount)}</span> <SarSymbol />
                         </Typography>
                         <Typography variant="caption" sx={{ fontWeight: 'bold', color: cat.color }}>
                           {cat.percentage}%
@@ -597,7 +598,7 @@ const Reports: React.FC = () => {
                   الفواتير الأعلى قيمة خلال الدورة
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  الفواتير المعتمدة التي تتجاوز قيمتها 500 ر.س
+                  الموردون الأعلى إنفاقاً خلال الفترة المحددة
                 </Typography>
               </Box>
               <Button
@@ -641,7 +642,7 @@ const Reports: React.FC = () => {
                         القيمة الإجمالية شاملة الضريبة:
                       </Typography>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#235b54' }}>
-                        <span className="number">{formatCurrency(vendor.amount)}</span> ر.س
+                        <span className="number">{formatCurrency(vendor.amount)}</span> <SarSymbol />
                       </Typography>
                     </Box>
 

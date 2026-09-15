@@ -118,6 +118,7 @@ router.get('/summary', asyncHandler(async (req: Request, res: Response) => {
       vatAmount,
       dailyBurnRate: Math.round(dailyBurnRate * 100) / 100,
       remainingBalance: holder.remaining_amount ?? 0,
+      limitAmount: limit,
       consumptionRate: limit ? Math.round((used / limit) * 1000) / 10 : 0,
       categorySpending,
       monthlySpending,
