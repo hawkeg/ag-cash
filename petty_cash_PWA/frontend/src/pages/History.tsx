@@ -638,10 +638,10 @@ const History: React.FC<HistoryProps> = () => {
                           color: 'text.secondary',
                         }}
                       />
-                      {(request.expenses?.length || 0) > 0 && (
+                      {(request.expenses?.filter(e => e.receiptUrl).length || 0) > 0 && (
                         <Chip
                           icon={<AttachFile fontSize="small" />}
-                          label="مرفقات"
+                          label={`${request.expenses!.filter(e => e.receiptUrl).length} مرفقات`}
                           size="small"
                           sx={{
                             bgcolor: alpha(theme.palette.primary.main, 0.1),

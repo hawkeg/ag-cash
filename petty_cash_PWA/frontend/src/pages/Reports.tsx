@@ -381,7 +381,7 @@ const Reports: React.FC = () => {
               <Box sx={{ pt: 2, borderTop: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
                 <CheckCircle sx={{ fontSize: 16, color: theme.palette.success.main }} />
                 <Typography variant="caption" sx={{ color: theme.palette.success.main, fontWeight: 500 }}>
-                  100% موثقة ومطابقة
+                  {summary?.lineCount ?? 0} بند مصروف
                 </Typography>
               </Box>
             </Paper>

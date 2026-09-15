@@ -729,9 +729,23 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                 </Typography>
               </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                مرفقان موثقان QR
+                {(() => {
+                  const n = expenses.filter(e => e.receiptUrl).length
+                  if (n === 0) return 'لا توجد مرفقات'
+                  if (n === 1) return 'مرفق واحد'
+                  if (n === 2) return 'مرفقان'
+                  return `${n} مرفقات`
+                })()}
               </Typography>
             </Box>
+
+            {expenses.filter(e => e.receiptUrl).length === 0 && (
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography variant="body2" color="text.secondary">
+                  لم يتم إرفاق إيصالات لهذا الطلب
+                </Typography>
+              </Box>
+            )}
 
             <Grid container spacing={2}>
               {expenses.filter(e => e.receiptUrl).map((expense, index) => (
