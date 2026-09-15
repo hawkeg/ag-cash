@@ -40,7 +40,6 @@ import {
   Person as PersonIcon,
   ReceiptLong,
   AttachFile,
-  Notifications,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import { Request, RequestStatus, AdvanceStatus, Advance } from '@shared/types'
@@ -353,71 +352,6 @@ const Requests: React.FC<RequestsProps> = () => {
       bgcolor: 'background.default',
       pb: isMobile ? 8 : 0,
     }}>
-      {/* Header */}
-      <Box 
-        sx={{ 
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          bgcolor: 'background.paper',
-          boxShadow: 1,
-          borderBottom: 1,
-          borderColor: 'divider',
-        }}
-      >
-        <Container maxWidth="lg" sx={{ py: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {/* Logo placeholder */}
-              <Box 
-                sx={{ 
-                  width: 36, 
-                  height: 36, 
-                  borderRadius: 1,
-                  bgcolor: 'white',
-                  border: 1,
-                  borderColor: 'divider',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Typography variant="h6" sx={{ color: theme.palette.primary.main, fontWeight: 'bold' }}>
-                  AG
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="h6" sx={{ color: theme.palette.primary.main, fontWeight: 'bold' }}>
-                  AG-Cash
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  الخليج العربي للصيانة والتشغيل
-                </Typography>
-              </Box>
-            </Box>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <IconButton size="small">
-                <Notifications />
-              </IconButton>
-              <Box 
-                sx={{ 
-                  width: 32, 
-                  height: 32, 
-                  borderRadius: '50%',
-                  overflow: 'hidden',
-                  border: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                {/* User avatar placeholder */}
-                <Box sx={{ width: '100%', height: '100%', bgcolor: 'grey.300' }} />
-              </Box>
-            </Box>
-          </Box>
-        </Container>
-      </Box>
-
       {/* Main Content */}
       <Container maxWidth="lg" sx={{ py: 3 }}>
         {/* Page Header */}
