@@ -19,7 +19,7 @@ describe('statusToAction', () => {
 });
 
 describe('buildLineVals', () => {
-  const taxMap = new Map([[1, [33]]]);
+  const taxMap = new Map([[1, { taxIds: [33], accountId: 555 }]]);
 
   it('maps basic fields', () => {
     const v = buildLineVals({ description: 'fuel', amount: 50, categoryId: 1, vendorId: 7 }, taxMap);

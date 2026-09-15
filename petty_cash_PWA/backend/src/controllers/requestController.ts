@@ -212,39 +212,50 @@ router.get('/:id', asyncHandler(async (req: ExpressRequest, res: Response) => {
 
 // Fetch category tax_ids so VAT lines get proper taxes (onchange doesn't
 // fire over XML-RPC — we must set tax_ids explicitly)
-const getCategoryTaxMap = async (auth: any, categoryIds: number[]) => {
-  const map = new Map<number, number[]>();
+const getCategoryMap = async (auth: any, categoryIds: number[]) => {
+  const map = new Map<number, { taxIds: number[]; accountId?: number }>();
   const ids = [...new Set(categoryIds.filter(Boolean))];
   if (!ids.length) return map;
   try {
     const rows = await search_read(auth, {
       model: 'ems.petty.expense.category',
       domain: [['id', 'in', ids]],
-      fields: ['id', 'tax_ids'],
+      fields: ['id', 'tax_ids', 'account_id'],
     });
-    rows.forEach((c: any) => map.set(c.id, c.tax_ids || []));
+    rows.forEach((c: any) =>
+      map.set(c.id, {
+        taxIds: c.tax_ids || [],
+        accountId: Array.isArray(c.account_id) ? c.account_id[0] : undefined,
+      })
+    );
   } catch (e) {
-    logger.warn('Could not fetch category tax_ids:', e);
+    logger.warn('Could not fetch category defaults:', e);
   }
   return map;
 };
 
-export const buildLineVals = (exp: any, catTaxMap: Map<number, number[]>) => ({
-  name: exp.description,
-  amount: exp.amount,
-  category_id: exp.categoryId || false,
-  partner_id: exp.vendorId || false,
-  invoice_date: exp.invoiceDate || false,
-  vendor_vat: exp.vendorVat || false,
-  vendor_cr: exp.vendorCr || false,
-  notes: exp.notes || false,
-  receipt_file: exp.receiptFile || false,
-  receipt_filename: exp.receiptFilename || false,
-  with_vat: !!exp.withVat,
-  ...(exp.withVat && exp.categoryId && catTaxMap.get(exp.categoryId)?.length
-    ? { tax_ids: [[6, 0, catTaxMap.get(exp.categoryId)]] }
-    : {}),
-});
+export const buildLineVals = (
+  exp: any,
+  catMap: Map<number, { taxIds: number[]; accountId?: number }>
+) => {
+  const cat = exp.categoryId ? catMap.get(exp.categoryId) : undefined;
+  return {
+    name: exp.description,
+    amount: exp.amount,
+    category_id: exp.categoryId || false,
+    // account_id is normally filled by an Odoo onchange that never fires via XML-RPC
+    account_id: cat?.accountId || false,
+    partner_id: exp.vendorId || false,
+    invoice_date: exp.invoiceDate || false,
+    vendor_vat: exp.vendorVat || false,
+    vendor_cr: exp.vendorCr || false,
+    notes: exp.notes || false,
+    receipt_file: exp.receiptFile || false,
+    receipt_filename: exp.receiptFilename || false,
+    with_vat: !!exp.withVat,
+    ...(exp.withVat && cat?.taxIds?.length ? { tax_ids: [[6, 0, cat.taxIds]] } : {}),
+  };
+};
 
 // Link ems.petty.invoice.document records created by OCR scans to the new
 // request and their matching expense lines
@@ -271,7 +282,7 @@ router.post('/', validate(createRequestSchema), asyncHandler(async (req: Express
   const { description, expenses, submit, dedicatedRequestId } = req.body;
 
   const auth = await odooAuthenticate();
-  const catTaxMap = await getCategoryTaxMap(auth, (expenses || []).map((e: any) => e.categoryId));
+  const catMap = await getCategoryMap(auth, (expenses || []).map((e: any) => e.categoryId));
 
   const data: Record<string, any> = {
     holder_id: holderId,
@@ -279,7 +290,7 @@ router.post('/', validate(createRequestSchema), asyncHandler(async (req: Express
   };
   if (dedicatedRequestId) data.dedicated_request_id = dedicatedRequestId;
   if (expenses?.length) {
-    data.line_ids = expenses.map((exp: any) => [0, 0, buildLineVals(exp, catTaxMap)]);
+    data.line_ids = expenses.map((exp: any) => [0, 0, buildLineVals(exp, catMap)]);
   }
 
   let newId: number;
@@ -306,6 +317,11 @@ router.post('/', validate(createRequestSchema), asyncHandler(async (req: Express
       await execute_kw(auth, ODOO_MODEL, 'action_submit', [[newId]]);
     } catch (e: any) {
       logger.warn(`Created request ${newId} but submit failed:`, e);
+      return errorResponse(
+        res, 502,
+        `Request saved as draft, but submit failed: ${e.message}`,
+        'SUBMIT_FAILED'
+      );
     }
   }
 
@@ -350,8 +366,8 @@ router.put('/:id', validate(updateRequestSchema), asyncHandler(async (req: Expre
   const data: Record<string, any> = {};
   if (description !== undefined) data.description = description;
   if (expenses !== undefined) {
-    const catTaxMap = await getCategoryTaxMap(auth, expenses.map((e: any) => e.categoryId));
-    data.line_ids = [[5, 0, 0], ...expenses.map((exp: any) => [0, 0, buildLineVals(exp, catTaxMap)])];
+    const catMap = await getCategoryMap(auth, expenses.map((e: any) => e.categoryId));
+    data.line_ids = [[5, 0, 0], ...expenses.map((exp: any) => [0, 0, buildLineVals(exp, catMap)])];
   }
 
   try {

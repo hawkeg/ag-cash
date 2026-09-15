@@ -381,13 +381,15 @@ router.post('/', validate(createExpenseSchema), asyncHandler(async (req: Request
     return errorResponse(res, 400, 'Can only add expenses to draft requests', 'INVALID_STATUS');
   }
 
-  // Resolve category tax_ids — onchange doesn't fire over XML-RPC
+  // Resolve category tax_ids + account_id — onchange doesn't fire over XML-RPC
   let taxIds: number[] = [];
-  if (req.body.withVat && categoryId) {
+  let accountId: number | false = false;
+  if (categoryId) {
     const cats = await search_read(auth, {
-      model: CATEGORY_MODEL, domain: [['id', '=', categoryId]], fields: ['tax_ids'], limit: 1,
+      model: CATEGORY_MODEL, domain: [['id', '=', categoryId]], fields: ['tax_ids', 'account_id'], limit: 1,
     });
-    taxIds = cats[0]?.tax_ids || [];
+    if (req.body.withVat) taxIds = cats[0]?.tax_ids || [];
+    accountId = Array.isArray(cats[0]?.account_id) ? cats[0].account_id[0] : false;
   }
 
   try {
@@ -398,6 +400,7 @@ router.post('/', validate(createExpenseSchema), asyncHandler(async (req: Request
         name: description,
         amount,
         category_id: categoryId || false,
+        account_id: accountId,
         partner_id: vendorId || false,
         invoice_date: invoiceDate || false,
         vendor_vat: vendorVat || false,
@@ -444,7 +447,15 @@ router.put('/:id', validate(updateExpenseSchema), asyncHandler(async (req: Reque
 
   const { categoryId, vendorId, amount, description, invoiceDate, vendorVat, vendorCr, notes, receiptFile, receiptFilename } = req.body;
   const data: Record<string, any> = {};
-  if (categoryId !== undefined) data.category_id = categoryId || false;
+  if (categoryId !== undefined) {
+    data.category_id = categoryId || false;
+    if (categoryId) {
+      const cats = await search_read(auth, {
+        model: CATEGORY_MODEL, domain: [['id', '=', categoryId]], fields: ['account_id'], limit: 1,
+      });
+      if (Array.isArray(cats[0]?.account_id)) data.account_id = cats[0].account_id[0];
+    }
+  }
   if (vendorId !== undefined) data.partner_id = vendorId || false;
   if (amount !== undefined) data.amount = amount;
   if (description !== undefined) data.name = description;

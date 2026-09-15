@@ -171,8 +171,9 @@ export const execute_kw = async (
         client.methodCall('execute_kw', params, (error: any, value: any) => {
           if (error) {
             logger.error(`Odoo execute_kw error for ${model}.${method}:`, error);
+            const detail = error.faultString || '';
             reject(new OdooError(
-              `Method execution failed: ${method}`,
+              detail ? `${detail}` : `Method execution failed: ${method}`,
               'EXECUTE_ERROR',
               error.faultCode
             ));
