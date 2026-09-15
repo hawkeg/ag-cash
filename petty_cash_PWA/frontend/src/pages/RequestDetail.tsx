@@ -536,7 +536,10 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                 </Typography>
               </Box>
               <Typography variant="caption" sx={{ color: theme.palette.primary.main, fontWeight: 'medium' }}>
-                المرحلة {Math.max(timeline.findIndex(s => s.status !== 'completed'), 0) + 1 || timeline.length} من {timeline.length}
+                {(() => {
+                  const current = timeline.findIndex(s => s.status !== 'completed')
+                  return `المرحلة ${current === -1 ? timeline.length : current + 1} من ${timeline.length}`
+                })()}
               </Typography>
             </Box>
 
