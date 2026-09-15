@@ -694,23 +694,6 @@ const Requests: React.FC<RequestsProps> = () => {
                       {request.description}
                     </Typography>
 
-                    {/* Draft Alert */}
-                    {isDraft && (
-                      <Box sx={{ mb: 2, pr: 1 }}>
-                        <Alert
-                          severity="info"
-                          sx={{
-                            bgcolor: alpha(theme.palette.warning.main, 0.1),
-                            '& .MuiAlert-icon': { fontSize: 16 },
-                          }}
-                        >
-                          <Typography variant="caption">
-                            بانتظار إرفاق الفاتورة النهائية وتأكيد الإرسال للتدقيق
-                          </Typography>
-                        </Alert>
-                      </Box>
-                    )}
-
                     {/* Card Footer */}
                     <Box sx={{ 
                       display: 'flex', 
@@ -731,10 +714,10 @@ const Requests: React.FC<RequestsProps> = () => {
                             color: 'text.secondary',
                           }}
                         />
-                        {(request.expenses?.length || 0) > 0 && (
+                        {(request.expenses?.filter(e => e.receiptUrl).length || 0) > 0 && (
                           <Chip
                             icon={<AttachFile fontSize="small" />}
-                            label="مرفقين (2)"
+                            label={`${request.expenses!.filter(e => e.receiptUrl).length} مرفقات`}
                             size="small"
                             sx={{
                               bgcolor: alpha(theme.palette.primary.main, 0.1),

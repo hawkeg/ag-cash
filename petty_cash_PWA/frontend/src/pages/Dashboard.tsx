@@ -377,8 +377,9 @@ const Dashboard: React.FC = () => {
             bgcolor: '#235b54',
             '&:hover': { bgcolor: '#01433d' },
             borderRadius: 2,
-            px: 3,
+            px: 2.5,
             py: 1.5,
+            '& .MuiButton-startIcon': { marginInlineEnd: '6px', marginInlineStart: 0 },
           }}
         >
           طلب صرف
@@ -391,8 +392,9 @@ const Dashboard: React.FC = () => {
             bgcolor: '#006a4e',
             '&:hover': { bgcolor: '#004d38' },
             borderRadius: 2,
-            px: 3,
+            px: 2.5,
             py: 1.5,
+            '& .MuiButton-startIcon': { marginInlineEnd: '6px', marginInlineStart: 0 },
           }}
         >
           عهدة مخصصة
