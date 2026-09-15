@@ -31,7 +31,7 @@ import {
   AltRoute as AltRouteIcon,
   Check as CheckIcon,
   HourglassTop as HourglassTopIcon,
-  Payments as PaymentsIcon,
+  RadioButtonUnchecked as RadioButtonUncheckedIcon,
   VerifiedUser as VerifiedUserIcon,
   ReceiptLong as ReceiptLongIcon,
   LocalGasStation as LocalGasStationIcon,
@@ -536,7 +536,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                 </Typography>
               </Box>
               <Typography variant="caption" sx={{ color: theme.palette.primary.main, fontWeight: 'medium' }}>
-                المرحلة 4 من 5
+                المرحلة {Math.max(timeline.findIndex(s => s.status !== 'completed'), 0) + 1 || timeline.length} من {timeline.length}
               </Typography>
             </Box>
 
@@ -545,9 +545,9 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
               <Box
                 sx={{
                   position: 'absolute',
-                  top: 12,
-                  bottom: 12,
-                  right: 18,
+                  top: 14,
+                  bottom: 14,
+                  right: 'calc(16px + 13px)',
                   width: 2,
                   bgcolor: 'divider',
                 }}
@@ -569,10 +569,10 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         ...(step.status === 'completed' && {
-                          bgcolor: alpha(theme.palette.secondary.main, 0.3),
+                          bgcolor: alpha(theme.palette.success.main, 0.15),
                           border: 1,
-                          borderColor: theme.palette.secondary.main,
-                          color: theme.palette.secondary.main,
+                          borderColor: theme.palette.success.main,
+                          color: theme.palette.success.main,
                         }),
                         ...(step.status === 'active' && {
                           bgcolor: theme.palette.primary.main,
@@ -589,7 +589,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                     >
                       {step.status === 'completed' && <CheckIcon fontSize="small" sx={{ fontWeight: 'bold' }} />}
                       {step.status === 'active' && <HourglassTopIcon fontSize="small" />}
-                      {step.status === 'upcoming' && <PaymentsIcon fontSize="small" />}
+                      {step.status === 'upcoming' && <RadioButtonUncheckedIcon fontSize="small" />}
                     </Box>
 
                     {/* Step content */}
