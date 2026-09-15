@@ -16,7 +16,7 @@ import {
   InputAdornment,
   Chip,
 } from '@mui/material';
-import { AccountBalanceWallet, Search, Person } from '@mui/icons-material';
+import { AccountBalanceWallet, Search, Person, LockOutlined } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 
@@ -29,6 +29,7 @@ interface Holder {
   state: string;
   limitAmount: number;
   remainingAmount: number;
+  hasPin?: boolean;
 }
 
 const Login: React.FC = () => {
@@ -39,6 +40,20 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [setupMode, setSetupMode] = useState(false);
+
+  const isSetup = selected ? (setupMode || selected.hasPin === false) : false;
+  const needsPin = selected ? !isSetup : false;
+
+  const selectHolder = (h: Holder) => {
+    setSelected(h);
+    setPin('');
+    setPinConfirm('');
+    setSetupMode(false);
+    setError(null);
+  };
 
   useEffect(() => {
     const fetchHolders = async () => {
@@ -65,10 +80,26 @@ const Login: React.FC = () => {
 
   const handleLogin = async () => {
     if (!selected) return;
+    if (needsPin && !/^\d{4,6}$/.test(pin)) {
+      setError('أدخل رمز PIN (4-6 أرقام)');
+      return;
+    }
+    if (isSetup) {
+      if (!/^\d{4,6}$/.test(pin)) {
+        setError('أنشئ رمز PIN من 4-6 أرقام');
+        return;
+      }
+      if (pin !== pinConfirm) {
+        setError('رمزا PIN غير متطابقين');
+        return;
+      }
+    }
     try {
       setSubmitting(true);
       setError(null);
-      const res = await authAPI.login(selected.id);
+      const res = isSetup
+        ? await authAPI.setupPin(selected.id, pin)
+        : await authAPI.login(selected.id, pin);
       const { token, user } = res.data!;
       localStorage.setItem('token', token);
       localStorage.setItem('userId', user.id);
@@ -76,7 +107,13 @@ const Login: React.FC = () => {
       localStorage.setItem('holderId', String(selected.id));
       navigate('/', { replace: true });
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message || 'فشل تسجيل الدخول. حاول مرة أخرى.');
+      const code = err?.response?.data?.error?.code;
+      if (code === 'PIN_SETUP_REQUIRED') {
+        setSetupMode(true);
+        setError(null);
+      } else {
+        setError(err?.response?.data?.error?.message || 'فشل تسجيل الدخول. حاول مرة أخرى.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +188,7 @@ const Login: React.FC = () => {
                   key={h.id}
                   button
                   selected={selected?.id === h.id}
-                  onClick={() => setSelected(h)}
+                  onClick={() => selectHolder(h)}
                   sx={{
                     borderRadius: 1,
                     mb: 0.5,
@@ -179,12 +216,74 @@ const Login: React.FC = () => {
             </List>
           )}
 
+          {/* PIN entry / first-time PIN setup */}
+          {selected && needsPin && (
+            <TextField
+              fullWidth
+              type="password"
+              inputMode="numeric"
+              size="small"
+              label="رمز PIN"
+              placeholder="••••"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockOutlined />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          )}
+          {selected && isSetup && (
+            <Box sx={{ mb: 2 }}>
+              <Alert severity="info" sx={{ mb: 1.5 }}>
+                أول تسجيل دخول — أنشئ رمز PIN خاص بك (4-6 أرقام)
+              </Alert>
+              <TextField
+                fullWidth
+                type="password"
+                inputMode="numeric"
+                size="small"
+                label="رمز PIN الجديد"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                sx={{ mb: 1.5 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlined />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                fullWidth
+                type="password"
+                inputMode="numeric"
+                size="small"
+                label="تأكيد رمز PIN"
+                value={pinConfirm}
+                onChange={(e) => setPinConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockOutlined />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+          )}
+
           {/* Login button */}
           <Button
             fullWidth
             variant="contained"
             size="large"
-            disabled={!selected || submitting}
+            disabled={!selected || submitting || (needsPin && pin.length < 4)}
             onClick={handleLogin}
             sx={{
               bgcolor: '#235b54',
@@ -193,7 +292,7 @@ const Login: React.FC = () => {
               fontWeight: 700,
             }}
           >
-            {submitting ? <CircularProgress size={24} color="inherit" /> : 'تسجيل الدخول'}
+            {submitting ? <CircularProgress size={24} color="inherit" /> : isSetup ? 'إنشاء PIN والدخول' : 'تسجيل الدخول'}
           </Button>
         </CardContent>
       </Card>

@@ -8,6 +8,8 @@ services:
       # Containers can't see the host's localhost — route Odoo through the Docker host bridge
       - ODOO_URL=http://host.docker.internal:9082/
       - CORS_ORIGIN=http://localhost:8080,http://192.168.1.225:8080,http://192.168.8.10:8080,http://100.111.12.26:8080
+    volumes:
+      - agcash-data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -38,6 +40,9 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+volumes:
+  agcash-data:
 
 networks:
   agcash:

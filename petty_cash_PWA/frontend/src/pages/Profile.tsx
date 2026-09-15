@@ -255,19 +255,27 @@ const Profile: React.FC = () => {
     setConfirmPassword('');
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
+    if (!/^\d{4,6}$/.test(newPassword)) {
+      showSnackbar('رمز PIN يجب أن يكون 4-6 أرقام');
+      return;
+    }
     if (newPassword !== confirmPassword) {
-      showSnackbar('كلمة المرور الجديدة غير متطابقة');
+      showSnackbar('رمزا PIN غير متطابقين');
       return;
     }
-    if (newPassword.length < 8) {
-      showSnackbar('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+    if (!/^\d{4,6}$/.test(currentPassword)) {
+      showSnackbar('أدخل رمز PIN الحالي');
       return;
     }
-    // TODO: Call password change API
-    console.log('Password change requested');
-    handlePasswordDialogClose();
-    showSnackbar('تم تغيير كلمة المرور بنجاح');
+    try {
+      const holderId = Number(localStorage.getItem('holderId'));
+      await authAPI.changePin(holderId, currentPassword, newPassword);
+      handlePasswordDialogClose();
+      showSnackbar('تم تغيير رمز PIN بنجاح');
+    } catch (err: any) {
+      showSnackbar(err?.response?.data?.error?.message || 'فشل تغيير رمز PIN');
+    }
   };
 
   const handleLogout = async () => {
@@ -411,7 +419,7 @@ const Profile: React.FC = () => {
                   </Avatar>
                 </ListItemIcon>
                 <ListItemText
-                  primary="تغيير كلمة المرور"
+                  primary="تغيير رمز PIN"
                   secondary="آخر تغيير قبل 3 أشهر"
                   primaryTypographyProps={{ variant: 'body2', fontWeight: 500 }}
                 />
@@ -732,34 +740,37 @@ const Profile: React.FC = () => {
         maxWidth="xs"
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ fontWeight: 'bold' }}>تغيير كلمة المرور</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 'bold' }}>تغيير رمز PIN</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <TextField
-              label="كلمة المرور الحالية"
+              label="رمز PIN الحالي"
               type="password"
+              inputMode="numeric"
               fullWidth
               value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
+              onChange={(e) => setCurrentPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
             />
             <TextField
-              label="كلمة المرور الجديدة"
+              label="رمز PIN الجديد"
               type="password"
+              inputMode="numeric"
               fullWidth
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              helperText="8 أحرف على الأقل"
+              onChange={(e) => setNewPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              helperText="4-6 أرقام"
             />
             <TextField
-              label="تأكيد كلمة المرور الجديدة"
+              label="تأكيد رمز PIN الجديد"
               type="password"
+              inputMode="numeric"
               fullWidth
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
               error={confirmPassword !== '' && newPassword !== confirmPassword}
               helperText={
                 confirmPassword !== '' && newPassword !== confirmPassword
-                  ? 'كلمة المرور غير متطابقة'
+                  ? 'رمزا PIN غير متطابقين'
                   : ''
               }
             />

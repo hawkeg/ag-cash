@@ -46,6 +46,8 @@ const authLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/setup-pin', authLimiter);
+app.use('/api/auth/change-pin', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
 // Request logging middleware

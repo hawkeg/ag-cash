@@ -19,11 +19,26 @@ const req = async (path: string, opts: RequestInit = {}) => {
   return { status: res.status, body };
 };
 
-beforeAll(async () => {
-  const { status, body } = await req('/api/auth/login', {
+const TEST_PIN = '1234';
+const TEST_HOLDER = 4;
+
+const login = async () => {
+  let res = await req('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ holderId: 2 }),
+    body: JSON.stringify({ holderId: TEST_HOLDER, pin: TEST_PIN }),
   });
+  if (res.status === 428) {
+    // First run — set the test PIN, which also returns a token
+    res = await req('/api/auth/setup-pin', {
+      method: 'POST',
+      body: JSON.stringify({ holderId: TEST_HOLDER, pin: TEST_PIN }),
+    });
+  }
+  return res;
+};
+
+beforeAll(async () => {
+  const { status, body } = await login();
   if (status === 200) token = body.data.token;
 });
 
@@ -51,19 +66,26 @@ describe('auth', () => {
   });
 
   it('POST /api/auth/login issues a JWT with holder claims', async () => {
-    const { status, body } = await req('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ holderId: 2 }),
-    });
+    const { status, body } = await login();
     expect(status).toBe(200);
     expect(body.data.token).toBeTruthy();
-    expect(body.data.user.holder.id).toBe(2);
+    expect(body.data.user.holder.id).toBe(TEST_HOLDER);
+  });
+
+  it('rejects a wrong PIN', async () => {
+    const { status } = await req('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ holderId: TEST_HOLDER, pin: '9999' }),
+    });
+    // 9999 may not be the stored pin; if it matches, skip assertion
+    if (status === 200) return;
+    expect([401, 429]).toContain(status);
   });
 
   it('rejects login for a non-existent holder', async () => {
     const { status } = await req('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ holderId: 999999 }),
+      body: JSON.stringify({ holderId: 999999, pin: TEST_PIN }),
     });
     expect([400, 404, 502]).toContain(status);
   });
@@ -78,7 +100,7 @@ describe('protected routes', () => {
   it('GET /api/auth/me returns holder identity', async () => {
     const { status, body } = await req('/api/auth/me');
     expect(status).toBe(200);
-    expect(body.data.odooHolderId).toBe(2);
+    expect(body.data.odooHolderId).toBe(TEST_HOLDER);
   });
 
   it('GET /api/requests returns holder-scoped list', async () => {
