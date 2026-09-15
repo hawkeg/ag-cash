@@ -22,6 +22,8 @@ import {
   FormControlLabel,
   Autocomplete,
   InputAdornment,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material'
 import {
   ArrowForward,
@@ -94,6 +96,8 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
   loading = false,
 }) => {
   const navigate = useNavigate()
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [categories, setCategories] = useState<Category[]>(categoriesProp ?? [])
   const [vendors, setVendors] = useState<VendorOption[]>([])
   const [vendorSearch, setVendorSearch] = useState('')
@@ -1214,7 +1218,8 @@ const CreateRequest: React.FC<CreateRequestProps> = ({
           gap: 2, 
           mt: 3,
           position: 'sticky',
-          bottom: 0,
+          // On mobile keep clear of the fixed bottom nav (56px + safe area)
+          bottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom, 0px))' : 0,
           bgcolor: 'background.paper',
           py: 2,
           borderTop: 1,

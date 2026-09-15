@@ -19,7 +19,11 @@ const PORT = process.env.PORT || 4001;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(o => o.trim()),
+  // In development reflect the request origin — the dev server is LAN-hosted
+  // and the machine IP can change between networks. Production stays strict.
+  origin: process.env.NODE_ENV === 'production'
+    ? (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(o => o.trim())
+    : true,
   credentials: true
 }));
 app.use(express.json({ limit: '15mb' }));

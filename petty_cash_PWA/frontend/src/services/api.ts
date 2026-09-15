@@ -2,7 +2,10 @@ import axios from 'axios';
 import { Request, Expense, Advance, CreateRequestDto, CreateAdvanceDto, ApiResponse, PaginatedResponse, RequestStatus, AdvanceStatus } from '@shared/types';
 import { offlineDb } from './offlineDb';
 
-const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:4001';
+// In dev, derive the API host from the page's own hostname so the app works
+// from any device/IP on the LAN without rebuilding (LAN IPs can change).
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL
+  || `${location.protocol}//${location.hostname}:4002`;
 
 // Create axios instance
 const api = axios.create({

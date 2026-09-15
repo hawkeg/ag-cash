@@ -823,7 +823,8 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
       <Box
         sx={{
           position: 'fixed',
-          bottom: 0,
+          // On mobile sit above the fixed bottom nav (56px + safe area)
+          bottom: isMobile ? 'calc(56px + env(safe-area-inset-bottom, 0px))' : 0,
           left: 0,
           right: 0,
           bgcolor: 'background.paper',
