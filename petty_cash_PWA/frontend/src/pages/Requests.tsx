@@ -493,7 +493,6 @@ const Requests: React.FC<RequestsProps> = () => {
           <Chip
             label={isRtl ? `قيد المراجعة ${statusCounts[RequestStatus.SUBMITTED]}` : `${statusCounts[RequestStatus.SUBMITTED]} قيد المراجعة`}
             onClick={() => setStatusFilter(RequestStatus.SUBMITTED)}
-            icon={<PendingIcon fontSize="small" />}
             sx={{
               bgcolor: statusFilter === RequestStatus.SUBMITTED ? alpha(theme.palette.warning.main, 0.1) : 'background.paper',
               color: statusFilter === RequestStatus.SUBMITTED ? theme.palette.warning.dark : 'text.primary',
@@ -504,7 +503,6 @@ const Requests: React.FC<RequestsProps> = () => {
           <Chip
             label={isRtl ? `معتمد ${statusCounts[RequestStatus.APPROVED]}` : `${statusCounts[RequestStatus.APPROVED]} معتمد`}
             onClick={() => setStatusFilter(RequestStatus.APPROVED)}
-            icon={<VerifiedIcon fontSize="small" />}
             sx={{
               bgcolor: statusFilter === RequestStatus.APPROVED ? alpha(theme.palette.success.main, 0.1) : 'background.paper',
               color: statusFilter === RequestStatus.APPROVED ? theme.palette.success.dark : 'text.primary',
@@ -515,7 +513,6 @@ const Requests: React.FC<RequestsProps> = () => {
           <Chip
             label={isRtl ? `مسودة ${statusCounts[RequestStatus.DRAFT]}` : `${statusCounts[RequestStatus.DRAFT]} مسودة`}
             onClick={() => setStatusFilter(RequestStatus.DRAFT)}
-            icon={<EditDocumentIcon fontSize="small" />}
             sx={{
               bgcolor: statusFilter === RequestStatus.DRAFT ? alpha(theme.palette.text.disabled, 0.1) : 'background.paper',
               color: statusFilter === RequestStatus.DRAFT ? theme.palette.text.disabled : 'text.primary',
@@ -526,7 +523,6 @@ const Requests: React.FC<RequestsProps> = () => {
           <Chip
             label={isRtl ? `مرفوض ${statusCounts[RequestStatus.REJECTED]}` : `${statusCounts[RequestStatus.REJECTED]} مرفوض`}
             onClick={() => setStatusFilter(RequestStatus.REJECTED)}
-            icon={<CloseIcon fontSize="small" />}
             sx={{
               bgcolor: statusFilter === RequestStatus.REJECTED ? alpha(theme.palette.error.main, 0.1) : 'background.paper',
               color: statusFilter === RequestStatus.REJECTED ? theme.palette.error.main : 'text.primary',
