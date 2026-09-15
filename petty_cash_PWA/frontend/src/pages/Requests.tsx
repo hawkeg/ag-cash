@@ -41,7 +41,6 @@ import {
   ReceiptLong,
   AttachFile,
   Notifications,
-  Edit as EditIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import { Request, RequestStatus, AdvanceStatus, Advance } from '@shared/types'
@@ -678,7 +677,6 @@ const Requests: React.FC<RequestsProps> = () => {
                       <Chip
                         label={statusConfig.label}
                         size="small"
-                        icon={statusConfig.icon}
                         sx={{
                           bgcolor: statusConfig.bgColor,
                           color: statusConfig.textColor,
@@ -729,7 +727,6 @@ const Requests: React.FC<RequestsProps> = () => {
                       {isDraft && (
                         <Button
                           size="small"
-                          startIcon={<EditIcon />}
                           onClick={(e) => {
                             e.stopPropagation()
                             console.log('Edit draft:', request.id)
