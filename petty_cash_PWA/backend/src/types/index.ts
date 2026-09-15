@@ -67,6 +67,7 @@ export interface Advance {
   id: string;
   userId: string;
   odooAdvanceId?: number;
+  name?: string;
   amount: number;
   purpose: string;
   expectedReturnDate?: Date;

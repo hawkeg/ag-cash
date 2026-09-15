@@ -44,7 +44,7 @@ import {
   Edit as EditIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
-import { Request, RequestStatus, AdvanceStatus } from '@shared/types'
+import { Request, RequestStatus, AdvanceStatus, Advance } from '@shared/types'
 import { requestsAPI, advancesAPI } from '../services/api'
 
 interface RequestsProps {
@@ -75,6 +75,7 @@ const Requests: React.FC<RequestsProps> = () => {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [availableBalance, setAvailableBalance] = useState(0)
+  const [advances, setAdvances] = useState<Advance[]>([])
 
   // Fetch requests from the API
   const fetchRequests = async (isRefresh = false) => {
@@ -101,6 +102,7 @@ const Requests: React.FC<RequestsProps> = () => {
 
       // Compute available custody balance: disbursed advances minus paid requests
       const advances = advancesRes.status === 'fulfilled' ? advancesRes.value.data?.data ?? [] : []
+      setAdvances(advances)
       const disbursed = advances
         .filter((a) => a.status === AdvanceStatus.DISBURSED || a.status === AdvanceStatus.SETTLED)
         .reduce((sum, a) => sum + a.amount, 0)
@@ -286,6 +288,28 @@ const Requests: React.FC<RequestsProps> = () => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount)
+  }
+
+  const getAdvanceStatusLabel = (status: AdvanceStatus) => {
+    switch (status) {
+      case AdvanceStatus.PENDING: return 'قيد المراجعة'
+      case AdvanceStatus.APPROVED: return 'معتمدة'
+      case AdvanceStatus.DISBURSED: return 'مصروفة'
+      case AdvanceStatus.SETTLED: return 'مسوّاة'
+      case AdvanceStatus.CANCELLED: return 'ملغاة / مرفوضة'
+      default: return status
+    }
+  }
+
+  const getAdvanceStatusColor = (status: AdvanceStatus) => {
+    switch (status) {
+      case AdvanceStatus.APPROVED:
+      case AdvanceStatus.DISBURSED: return 'success'
+      case AdvanceStatus.SETTLED: return 'info'
+      case AdvanceStatus.PENDING: return 'warning'
+      case AdvanceStatus.CANCELLED: return 'error'
+      default: return 'default'
+    }
   }
 
   // Handle request card click (navigate to detail page)
@@ -736,6 +760,46 @@ const Requests: React.FC<RequestsProps> = () => {
             })
           )}
         </Box>
+
+        {/* Dedicated Custody Requests */}
+        {!loading && advances.length > 0 && (
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+              طلبات العهدة المخصصة
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {advances.map((adv) => (
+                <Card key={adv.id} sx={{ borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                  <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
+                          {adv.name || `#${adv.odooAdvanceId}`}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {adv.purpose}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {new Date(adv.createdAt).toLocaleDateString('ar-SA')}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ textAlign: 'left' }}>
+                        <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                          <span className="number">{formatAmount(adv.amount)}</span> ر.س
+                        </Typography>
+                        <Chip
+                          label={getAdvanceStatusLabel(adv.status)}
+                          size="small"
+                          color={getAdvanceStatusColor(adv.status) as any}
+                        />
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </Box>
+        )}
 
         {/* Pagination */}
         {!loading && filteredRequests.length > PAGE_SIZE && (

@@ -53,6 +53,7 @@ const mapAdvance = (r: any): Advance => ({
   id: String(r.id),
   userId: `holder_${Array.isArray(r.holder_id) ? r.holder_id[0] : r.holder_id}`,
   odooAdvanceId: r.id,
+  name: r.name || undefined,
   amount: r.amount || 0,
   purpose: r.reason || r.name,
   status: odooToStatus[r.state] || AdvanceStatus.PENDING,
