@@ -43,7 +43,7 @@ const statusToOdoo: Record<RequestStatus, string[]> = {
   [RequestStatus.CANCELLED]: ['cancelled'],
 };
 
-const statusToAction: Partial<Record<RequestStatus, string>> = {
+export const statusToAction: Partial<Record<RequestStatus, string>> = {
   [RequestStatus.SUBMITTED]: 'action_submit',
   [RequestStatus.CANCELLED]: 'action_cancel',
   [RequestStatus.DRAFT]: 'action_draft',
@@ -227,7 +227,7 @@ const getCategoryTaxMap = async (auth: any, categoryIds: number[]) => {
   return map;
 };
 
-const buildLineVals = (exp: any, catTaxMap: Map<number, number[]>) => ({
+export const buildLineVals = (exp: any, catTaxMap: Map<number, number[]>) => ({
   name: exp.description,
   amount: exp.amount,
   category_id: exp.categoryId || false,

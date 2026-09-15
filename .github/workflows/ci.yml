@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: petty_cash_PWA/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: petty_cash_PWA/backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Unit tests (integration tests need live Odoo)
+        run: npx vitest run src/__tests__/unit.test.ts
+      - run: npm audit --omit=dev --audit-level=high
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: petty_cash_PWA/frontend/package-lock.json
+      - name: Install + build (shared/ types are resolved via ../shared alias)
+        run: |
+          cd petty_cash_PWA/frontend
+          npm ci
+          npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t agcash-backend ./petty_cash_PWA/backend
+      - name: Build frontend image
+        run: docker build -f petty_cash_PWA/frontend/Dockerfile -t agcash-frontend ./petty_cash_PWA

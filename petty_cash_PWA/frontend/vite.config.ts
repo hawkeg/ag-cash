@@ -12,7 +12,9 @@ export default defineConfig({
       srcDir: 'public',
       filename: 'sw.js',
       registerType: 'autoUpdate',
-      devOptions: { enabled: true, type: 'module' },
+      // injectManifest bundles workbox imports only at build time — the dev
+      // server would serve the raw file and fail evaluation, so keep SW off in dev.
+      devOptions: { enabled: false },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
         name: 'AG-Cash',

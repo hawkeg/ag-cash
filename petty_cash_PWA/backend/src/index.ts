@@ -2,6 +2,7 @@ import './config/env';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { logger } from './utils/logger';
 import { authMiddleware as authenticate } from './middleware/auth';
 import { ApiResponse } from './types';
@@ -24,15 +25,57 @@ app.use(cors({
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Rate limiting: general API + stricter on auth endpoints
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 300,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { success: false, error: { message: 'Too many requests, slow down', code: 'RATE_LIMITED' }, timestamp: new Date() },
+});
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { success: false, error: { message: 'Too many auth attempts, try again later', code: 'RATE_LIMITED' }, timestamp: new Date() },
+});
+app.use('/api', apiLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+
 // Request logging middleware
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
-// Health check
+// Health check (liveness — is the process up)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Readiness — is the app actually able to serve (Odoo reachable)
+app.get('/health/ready', async (req, res) => {
+  try {
+    const { authenticate } = await import('./services/odoo');
+    await authenticate();
+    res.json({ status: 'ready', odoo: 'connected', timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    res.status(503).json({ status: 'not_ready', odoo: err?.message || 'unreachable', timestamp: new Date().toISOString() });
+  }
+});
+
+// Basic runtime metrics
+app.get('/metrics', (req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    uptimeSeconds: Math.round(process.uptime()),
+    memoryRssMB: Math.round(mem.rss / 1048576),
+    memoryHeapMB: Math.round(mem.heapUsed / 1048576),
+    node: process.version,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // API routes

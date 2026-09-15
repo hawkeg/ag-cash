@@ -26,7 +26,7 @@ const LINE_FIELDS = [
 const getHolderId = (req: Request): number | null =>
   req.user?.userMetadata?.odooHolderId ?? null;
 
-const mapLine = (l: any): Expense => ({
+export const mapLine = (l: any): Expense => ({
   id: String(l.id),
   requestId: String(Array.isArray(l.request_id) ? l.request_id[0] : l.request_id),
   categoryId: Array.isArray(l.category_id) ? l.category_id[0] : undefined,
@@ -80,14 +80,14 @@ const updateExpenseSchema = Joi.object({
 });
 
 // Translated fields can come back as {en_US: '...'} maps via XML-RPC
-const transValue = (v: any): string => {
+export const transValue = (v: any): string => {
   if (v && typeof v === 'object') {
     return v.ar_001 || v.ar || Object.values(v)[0] as string || '';
   }
   return v || '';
 };
 
-const mapCategory = (c: any) => ({
+export const mapCategory = (c: any) => ({
   id: c.id,
   odooCategoryId: c.id,
   name: transValue(c.name),

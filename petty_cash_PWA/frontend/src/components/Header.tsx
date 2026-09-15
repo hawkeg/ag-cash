@@ -77,16 +77,21 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, showMenuButton = false }) 
     setAnchorEl(null)
   }
 
+  const userName = localStorage.getItem('userName') || 'صاحب العهدة'
+  const userInitial = userName.trim().charAt(0) || 'أ'
+
   const handleLogout = () => {
     handleMenuClose()
-    // TODO: Implement logout logic
-    console.log('Logout clicked')
+    localStorage.removeItem('token')
+    localStorage.removeItem('userId')
+    localStorage.removeItem('userName')
+    localStorage.removeItem('holderId')
+    navigate('/login')
   }
 
   const handleSettings = () => {
     handleMenuClose()
-    // TODO: Navigate to settings
-    console.log('Settings clicked')
+    navigate('/profile')
   }
 
   const handleLanguageChange = () => {
@@ -248,7 +253,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, showMenuButton = false }) 
                 fontFamily: 'Cairo',
               }}
             >
-              أ
+              {userInitial}
             </Avatar>
           </IconButton>
 
@@ -273,10 +278,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, showMenuButton = false }) 
               <AccountCircle sx={{ ml: 2, color: 'text.secondary' }} />
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  أحمد المنصور
+                  {userName}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  ahmed@example.com
+                  {localStorage.getItem('holderId') ? `PCH #${localStorage.getItem('holderId')}` : 'أمين عهدة'}
                 </Typography>
               </Box>
             </MenuItem>

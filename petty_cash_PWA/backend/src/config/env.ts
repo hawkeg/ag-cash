@@ -20,3 +20,13 @@ export const env = {
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 };
+
+// JWT secret must come from the environment in production — a baked-in
+// fallback would let anyone forge tokens on a deployed instance.
+export const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+  return secret || 'dev-secret';
+};

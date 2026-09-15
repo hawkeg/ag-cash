@@ -1,0 +1,43 @@
+services:
+  backend:
+    build: ./backend
+    container_name: agcash-backend
+    env_file: ./backend/.env
+    environment:
+      - NODE_ENV=production
+      # Containers can't see the host's localhost — route Odoo through the Docker host bridge
+      - ODOO_URL=http://host.docker.internal:9082/
+      - CORS_ORIGIN=http://localhost:8080,http://192.168.8.10:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks: [agcash]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: agcash-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [agcash]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  agcash:

@@ -5,11 +5,12 @@ import { logger } from '../utils/logger';
 import { validate, asyncHandler } from '../middleware/validation';
 import { authMiddleware } from '../middleware/auth';
 import { authenticate as odooAuthenticate, search_read, OdooError } from '../services/odoo';
+import { getJwtSecret } from '../config/env';
 import { ApiResponse } from '../types';
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const JWT_SECRET = getJwtSecret();
 const JWT_EXPIRES_IN = '7d';
 
 interface HolderRow {

@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
 import { verifyToken } from '../services/supabase';
+import { getJwtSecret } from '../config/env';
 import { AuthUser } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const JWT_SECRET = getJwtSecret();
 
 /**
  * Verify a bearer token. Tries locally-issued JWT first (holder login),

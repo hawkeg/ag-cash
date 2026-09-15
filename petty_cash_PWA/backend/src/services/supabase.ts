@@ -1,21 +1,12 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { env } from '../config/env';
 import { logger } from '../utils/logger';
 import { AuthUser, SignInCredentials, SignUpCredentials, AuthResponse, AuthSession } from '../types';
 
-// Environment variables
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-// Validate environment variables
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing required Supabase environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY');
-}
-
 // Initialize Supabase client with anon key (for client-side operations)
 export const supabase: SupabaseClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
+  env.SUPABASE_URL,
+  env.SUPABASE_ANON_KEY,
   {
     auth: {
       autoRefreshToken: true,
@@ -27,11 +18,11 @@ export const supabase: SupabaseClient = createClient(
 
 // Initialize Supabase admin client with service role key (for server-side operations)
 export const supabaseAdmin: SupabaseClient = createClient(
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
+  env.SUPABASE_URL,
+  env.SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: {
-      autoRefreshToken: false,
+      autoRefreshToken: true,
       persistSession: false,
     },
   }

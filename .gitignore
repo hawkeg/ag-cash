@@ -1,0 +1,23 @@
+# Delegate worktrees and job state
+.claude/delegate/
+
+# Dependencies and build output
+node_modules/
+**/dist/
+**/dev-dist/
+
+# Env and secrets
+.env
+**/.env
+**/.env.local
+**/.env.production.local
+
+# Runtime data / logs
+logs/
+**/data/
+*.log
+nul
+
+# Tooling artifacts
+.graphify_python/
+graphify-out/
