@@ -359,7 +359,7 @@ const History: React.FC<HistoryProps> = () => {
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               إجمالي الطلبات
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.primary.main }}>
+            <Typography sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.primary.main, fontSize: { xs: '1rem', sm: '1.25rem' }, whiteSpace: 'nowrap' }}>
               <span className="number">{stats.total}</span>
             </Typography>
           </Paper>
@@ -369,8 +369,9 @@ const History: React.FC<HistoryProps> = () => {
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               إجمالي المبلغ
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5 }}>
-              <span className="number">{formatAmount(stats.totalAmount)}</span> ر.س
+            <Typography sx={{ fontWeight: 'bold', mt: 0.5, fontSize: { xs: '0.9rem', sm: '1.25rem' }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span className="number">{formatAmount(stats.totalAmount)}</span>
+              <Typography component="span" sx={{ fontSize: '0.7em', fontWeight: 'normal', color: 'text.secondary' }}> ر.س</Typography>
             </Typography>
           </Paper>
         </Grid>
@@ -379,7 +380,7 @@ const History: React.FC<HistoryProps> = () => {
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               نسبة الاعتماد
             </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.success.dark }}>
+            <Typography sx={{ fontWeight: 'bold', mt: 0.5, color: theme.palette.success.dark, fontSize: { xs: '1rem', sm: '1.25rem' }, whiteSpace: 'nowrap' }}>
               <span className="number">{stats.approvalRate}٪</span>
             </Typography>
           </Paper>
@@ -464,7 +465,6 @@ const History: React.FC<HistoryProps> = () => {
         <Chip
           label="الكل"
           onClick={() => setStatusFilter('all')}
-          icon={<HistoryIcon fontSize="small" />}
           sx={{
             bgcolor: statusFilter === 'all' ? 'primary.main' : 'background.paper',
             color: statusFilter === 'all' ? 'white' : 'text.primary',
@@ -476,7 +476,6 @@ const History: React.FC<HistoryProps> = () => {
         <Chip
           label="مكتمل"
           onClick={() => setStatusFilter('completed')}
-          icon={<CheckCircleIcon fontSize="small" />}
           sx={{
             bgcolor: statusFilter === 'completed' ? alpha(theme.palette.primary.main, 0.1) : 'background.paper',
             color: statusFilter === 'completed' ? theme.palette.primary.main : 'text.primary',
@@ -487,7 +486,6 @@ const History: React.FC<HistoryProps> = () => {
         <Chip
           label="معتمد"
           onClick={() => setStatusFilter(RequestStatus.APPROVED)}
-          icon={<VerifiedIcon fontSize="small" />}
           sx={{
             bgcolor: statusFilter === RequestStatus.APPROVED ? alpha(theme.palette.success.main, 0.1) : 'background.paper',
             color: statusFilter === RequestStatus.APPROVED ? theme.palette.success.dark : 'text.primary',
@@ -498,7 +496,6 @@ const History: React.FC<HistoryProps> = () => {
         <Chip
           label="مرفوض"
           onClick={() => setStatusFilter(RequestStatus.REJECTED)}
-          icon={<CloseIcon fontSize="small" />}
           sx={{
             bgcolor: statusFilter === RequestStatus.REJECTED ? alpha(theme.palette.error.main, 0.1) : 'background.paper',
             color: statusFilter === RequestStatus.REJECTED ? theme.palette.error.main : 'text.primary',
@@ -509,7 +506,6 @@ const History: React.FC<HistoryProps> = () => {
         <Chip
           label="تم الصرف"
           onClick={() => setStatusFilter(RequestStatus.PAID)}
-          icon={<DoneAllIcon fontSize="small" />}
           sx={{
             bgcolor: statusFilter === RequestStatus.PAID ? alpha(theme.palette.success.main, 0.1) : 'background.paper',
             color: statusFilter === RequestStatus.PAID ? theme.palette.success.dark : 'text.primary',
