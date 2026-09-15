@@ -19,6 +19,9 @@ import {
   Button,
   CircularProgress,
   Alert,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
 } from '@mui/material';
 import {
   AccountBalanceWallet,
@@ -134,7 +137,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ pb: 10 }}>
       {/* Page Title */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
@@ -357,49 +360,32 @@ const Dashboard: React.FC = () => {
       </>
       )}
 
-      {/* Floating Action Buttons */}
-      <Box
+      {/* Floating Action Button */}
+      <SpeedDial
+        ariaLabel="إجراءات جديدة"
+        icon={<SpeedDialIcon />}
+        direction="up"
         sx={{
           position: 'fixed',
-          bottom: 80,
+          bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
           right: 16,
           zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
+          '& .MuiFab-primary': { bgcolor: '#235b54', '&:hover': { bgcolor: '#01433d' } },
         }}
       >
-        <Button
-          variant="contained"
-          startIcon={<Add />}
+        <SpeedDialAction
+          icon={<Add />}
+          tooltipTitle="طلب صرف"
+          tooltipOpen
           onClick={() => navigate('/create-request')}
-          sx={{
-            bgcolor: '#235b54',
-            '&:hover': { bgcolor: '#01433d' },
-            borderRadius: 2,
-            px: 2.5,
-            py: 1.5,
-            '& .MuiButton-startIcon': { marginInlineEnd: '6px', marginInlineStart: 0 },
-          }}
-        >
-          طلب صرف
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<AccountBalanceWallet />}
+        />
+        <SpeedDialAction
+          icon={<AccountBalanceWallet />}
+          tooltipTitle="عهدة مخصصة"
+          tooltipOpen
           onClick={() => navigate('/advance-request')}
-          sx={{
-            bgcolor: '#006a4e',
-            '&:hover': { bgcolor: '#004d38' },
-            borderRadius: 2,
-            px: 2.5,
-            py: 1.5,
-            '& .MuiButton-startIcon': { marginInlineEnd: '6px', marginInlineStart: 0 },
-          }}
-        >
-          عهدة مخصصة
-        </Button>
-      </Box>
+        />
+      </SpeedDial>
     </Box>
   );
 };
