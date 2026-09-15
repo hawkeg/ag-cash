@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   Box,
@@ -63,44 +63,63 @@ interface TimelineStep {
   approver?: string
 }
 
-const mockTimeline: TimelineStep[] = [
-  {
-    id: '1',
-    title: 'إنشاء مسودة الطلب',
-    description: 'تم استيراد الفواتير وإرفاق الإيصالات الضريبية',
-    time: '09:15 ص',
-    status: 'completed',
-  },
-  {
-    id: '2',
-    title: 'تقديم الطلب رسمياً',
-    description: 'المرسل: سارة ناصر (أخصائي لوجستي)',
-    time: '09:40 ص',
-    status: 'completed',
-  },
-  {
-    id: '3',
-    title: 'موافقة المدير المباشر',
+const formatStepTime = (d?: Date | string) =>
+  d ? new Date(d).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }) : ''
+
+const buildTimeline = (request: Request): TimelineStep[] => {
+  const steps: TimelineStep[] = [
+    {
+      id: 'created',
+      title: 'إنشاء الطلب',
+      description: '',
+      time: formatStepTime(request.createdAt),
+      status: 'completed',
+    },
+  ]
+
+  const submitted = !!request.submittedAt || !['DRAFT'].includes(request.status)
+  steps.push({
+    id: 'submitted',
+    title: 'تقديم الطلب',
     description: '',
-    time: '11:05 ص',
-    status: 'completed',
-    approver: 'م. خالد السعيد',
-  },
-  {
-    id: '4',
-    title: 'مراجعة الإدارة المالية والتدقيق',
-    description: 'طلبك حالياً في قائمة انتظار المحاسب القانوني لمطابقة الأرقام الضريبية للعهد.',
-    time: 'جارٍ التدقيق',
-    status: 'active',
-  },
-  {
-    id: '5',
-    title: 'الصرف والترحيل المحاسبي',
-    description: 'إيداع التسوية أو قيد الإقفال في سجل الأستاذ',
-    time: '',
-    status: 'upcoming',
-  },
-]
+    time: formatStepTime(request.submittedAt),
+    status: request.submittedAt ? 'completed' : submitted ? 'completed' : 'upcoming',
+  })
+
+  if (request.status === RequestStatus.REJECTED) {
+    steps.push({
+      id: 'rejected',
+      title: 'رفض الطلب',
+      description: request.rejectionReason || '',
+      time: formatStepTime(request.rejectedAt || request.updatedAt),
+      status: 'active',
+      approver: request.rejectedBy,
+    })
+    return steps
+  }
+
+  const approved = !!request.approvedAt || request.status === RequestStatus.APPROVED || request.status === RequestStatus.PAID
+  steps.push({
+    id: 'approved',
+    title: 'اعتماد الطلب',
+    description: '',
+    time: formatStepTime(request.approvedAt),
+    status: approved ? 'completed' : request.status === RequestStatus.SUBMITTED ? 'active' : 'upcoming',
+    approver: request.approvedBy,
+  })
+
+  if (request.status !== RequestStatus.CANCELLED) {
+    steps.push({
+      id: 'paid',
+      title: 'الصرف والترحيل المحاسبي',
+      description: '',
+      time: request.status === RequestStatus.PAID ? formatStepTime(request.updatedAt) : '',
+      status: request.status === RequestStatus.PAID ? 'completed' : 'upcoming',
+    })
+  }
+
+  return steps
+}
 
 const RequestDetail: React.FC<RequestDetailProps> = () => {
   const theme = useTheme()
@@ -111,7 +130,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
 
   const [request, setRequest] = useState<Request | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
-  const [timeline] = useState<TimelineStep[]>(mockTimeline)
+  const timeline = useMemo(() => (request ? buildTimeline(request) : []), [request])
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null)
   const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -255,7 +274,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
     if (!request) return
     if (navigator.share) {
       navigator.share({
-        title: `طلب مصروف #REQ-2025-${request.odooRequestId}`,
+        title: `طلب مصروف ${request.name || `#${request.odooRequestId}`}`,
         text: `متابعة طلب مصروف عهدة بقيمة ${formatAmount(request.amount)} ر.س على تطبيق AG-Cash`,
         url: window.location.href,
       }).catch(() => {})
@@ -407,7 +426,7 @@ const RequestDetail: React.FC<RequestDetailProps> = () => {
                   طلب مصاريف عهدة
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-                  <span className="number">#REQ-2025-{String(request.odooRequestId || '').padStart(3, '0')}</span>
+                  <span className="number">{request.name || `#${request.odooRequestId}`}</span>
                 </Typography>
               </Box>
             </Box>

@@ -42,9 +42,9 @@ import {
   MoreVert,
   CheckCircle,
   Info,
-  AttachFile,
 } from '@mui/icons-material';
 import { Request, Expense, Category, Vendor } from '@shared/types';
+import api from '../services/api';
 
 interface CategorySpending {
   category: string;
@@ -82,77 +82,85 @@ const Reports: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // Mock data - in production, this would come from API
-  const [totalExpenses] = useState(8450.00);
-  const [vatAmount] = useState(1102.17);
-  const [dailyBurnRate] = useState(272.58);
-  const [remainingBalance] = useState(6550.00);
-  const [consumptionRate] = useState(56.3);
+  // Real data from /api/reports/summary
+  const [summary, setSummary] = useState<any>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
-  const [categorySpending] = useState<CategorySpending[]>([
-    {
-      category: 'محروقات ونقل ميداني',
-      amount: 3550.00,
-      percentage: 42,
-      icon: <LocalGasStation />,
-      color: '#235b54',
-    },
-    {
-      category: 'ضيافة واستقبال وفود',
-      amount: 2112.00,
-      percentage: 25,
-      icon: <Coffee />,
-      color: '#316760',
-    },
-    {
-      category: 'صيانة وقطع غيار طارئة',
-      amount: 1690.00,
-      percentage: 20,
-      icon: <Build />,
-      color: '#9ad1c8',
-    },
-    {
-      category: 'أدوات ومستلزمات مكتبية',
-      amount: 1098.00,
-      percentage: 13,
-      icon: <HistoryEdu />,
-      color: '#545f73',
-    },
-  ]);
+  const fetchSummary = async (range = dateRange, cat = categoryFilter) => {
+    try {
+      setLoading(true);
+      setLoadError(null);
+      const now = new Date();
+      let from: string | undefined;
+      let to: string | undefined;
+      if (range === 'this_week') {
+        from = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+      } else if (range === 'this_month') {
+        from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      } else if (range === 'last_month') {
+        from = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+        to = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+      }
+      const params: any = {};
+      if (from) params.from = from;
+      if (to) params.to = to;
+      if (cat && cat !== 'all') params.category = cat;
+      const res = await api.get('/api/reports/summary', { params });
+      setSummary(res.data.data);
+      if (!cat || cat === 'all') {
+        setAvailableCategories((res.data.data?.categorySpending ?? []).map((c: any) => c.category));
+      }
+    } catch (err: any) {
+      setLoadError(err?.response?.data?.error?.message || 'تعذر تحميل التقارير');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const [monthlySpending] = useState<MonthlySpending[]>([
-    { week: 'الأسبوع 1', amount: 1820, isPeak: false },
-    { week: 'الأسبوع 2', amount: 3410, isPeak: true },
-    { week: 'الأسبوع 3', amount: 1940, isPeak: false },
-    { week: 'الأسبوع 4', amount: 1280, isPeak: false },
-  ]);
+  useEffect(() => { fetchSummary(); }, [dateRange, categoryFilter]);
 
-  const [topVendors] = useState<TopVendor[]>([
-    {
-      name: 'مؤسسة مدار التقنية',
-      invoiceNumber: 'INV-9821',
-      amount: 1450.00,
-      date: '13 مايو 2025',
-      category: 'صيانة',
-      status: 'معتمد',
-    },
-    {
-      name: 'شركة الدريس للخدمات البترولية',
-      invoiceNumber: 'DRS-4412',
-      amount: 980.00,
-      date: '10 مايو 2025',
-      category: 'محروقات',
-      status: 'معتمد',
-    },
-    {
-      name: 'مطاعم واستراحات الضيافة',
-      invoiceNumber: 'HSP-1092',
-      amount: 850.00,
-      date: '07 مايو 2025',
-      category: 'ضيافة',
-      status: 'معتمد',
-    },
-  ]);
+  const totalExpenses = summary?.totalExpenses ?? 0;
+  const vatAmount = summary?.vatAmount ?? 0;
+  const dailyBurnRate = summary?.dailyBurnRate ?? 0;
+  const remainingBalance = summary?.remainingBalance ?? 0;
+  const consumptionRate = summary?.consumptionRate ?? 0;
+
+  const catIcon = (name: string) => {
+    if (/محروق|وقود|نقل/.test(name)) return <LocalGasStation />;
+    if (/ضياف|استقبال/.test(name)) return <Coffee />;
+    if (/صيان|قطع/.test(name)) return <Build />;
+    return <HistoryEdu />;
+  };
+  const palette = ['#235b54', '#316760', '#9ad1c8', '#545f73', '#6b8f89'];
+
+  const categorySpending: CategorySpending[] = (summary?.categorySpending ?? []).map(
+    (c: any, i: number) => ({
+      category: c.category,
+      amount: c.amount,
+      percentage: totalExpenses ? Math.round((c.amount / totalExpenses) * 100) : 0,
+      icon: catIcon(c.category),
+      color: palette[i % palette.length],
+    })
+  );
+
+  const monthLabel = (m: string) =>
+    new Date(m + '-01').toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' });
+  const maxMonthly = Math.max(0, ...(summary?.monthlySpending ?? []).map((m: any) => m.amount));
+  const monthlySpending: MonthlySpending[] = (summary?.monthlySpending ?? []).map((m: any) => ({
+    week: monthLabel(m.month),
+    amount: m.amount,
+    isPeak: m.amount === maxMonthly && maxMonthly > 0,
+  }));
+
+  const topVendors: TopVendor[] = (summary?.topVendors ?? []).map((v: any) => ({
+    name: v.vendor,
+    invoiceNumber: '',
+    amount: v.amount,
+    date: '',
+    category: '',
+    status: '',
+  }));
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-SA', {
@@ -180,28 +188,41 @@ const Reports: React.FC = () => {
   const handleExportCSV = () => {
     setExporting(true);
     handleExportMenuClose();
-    // Placeholder for CSV export
-    setTimeout(() => {
+    try {
+      const rows = [
+        ['الفئة', 'المبلغ'],
+        ...categorySpending.map(c => [c.category, String(c.amount)]),
+        [],
+        ['الشهر', 'المبلغ'],
+        ...monthlySpending.map(m => [m.week, String(m.amount)]),
+        [],
+        ['المورد', 'المبلغ'],
+        ...topVendors.map(v => [v.name, String(v.amount)]),
+        [],
+        ['إجمالي المصروفات', String(totalExpenses)],
+        ['مبلغ الضريبة', String(vatAmount)],
+        ['معدل الصرف اليومي', String(dailyBurnRate)],
+        ['الرصيد المتبقي', String(remainingBalance)],
+      ];
+      const csv = '﻿' + rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `ag-cash-report-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } finally {
       setExporting(false);
-      console.log('CSV export triggered');
-    }, 1500);
+    }
   };
 
   const handleExportPDF = () => {
-    setExporting(true);
     handleExportMenuClose();
-    // Placeholder for PDF export
-    setTimeout(() => {
-      setExporting(false);
-      console.log('PDF export triggered');
-    }, 1500);
+    window.print();
   };
 
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    fetchSummary();
   };
 
   const getMaxSpendingAmount = () => {
@@ -210,6 +231,11 @@ const Reports: React.FC = () => {
 
   return (
     <Box sx={{ pb: isMobile ? 2 : 0 }}>
+      {loadError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setLoadError(null)}>
+          {loadError}
+        </Alert>
+      )}
       {/* Main Content */}
       <Box sx={{ px: { xs: 0, sm: 2 }, py: 3 }}>
         {/* Page Header */}
@@ -278,7 +304,7 @@ const Reports: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CalendarToday sx={{ fontSize: 18, color: theme.palette.primary.main }} />
                   <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    مايو 2025
+                    {new Date().toLocaleDateString('ar-SA', { month: 'long', year: 'numeric' })}
                   </Typography>
                   <Chip label="الشهر الحالي" size="small" sx={{ bgcolor: '#9ad1c8', color: '#01433d' }} />
                 </Box>
@@ -606,16 +632,8 @@ const Reports: React.FC = () => {
                           <Typography variant="body2" sx={{ fontWeight: 600 }}>
                             {vendor.name}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace' }}>
-                            {vendor.invoiceNumber}
-                          </Typography>
                         </Box>
                       </Box>
-                      <Chip
-                        label={vendor.status}
-                        size="small"
-                        sx={{ bgcolor: 'rgba(0, 106, 78, 0.1)', color: '#006a4e', fontSize: 11 }}
-                      />
                     </Box>
 
                     <Box sx={{ my: 2, py: 1.5, borderTop: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
@@ -627,14 +645,7 @@ const Reports: React.FC = () => {
                       </Typography>
                     </Box>
 
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                        {vendor.date}
-                      </Typography>
-                      <Button size="small" startIcon={<AttachFile />} sx={{ color: '#235b54', fontSize: 11 }}>
-                        معاينة الفاتورة
-                      </Button>
-                    </Box>
+
                   </Paper>
                 </Grid>
               ))}
@@ -704,15 +715,11 @@ const Reports: React.FC = () => {
         <MenuItem onClick={() => { setCategoryFilter('all'); handleFilterMenuClose(); }}>
           جميع الفئات
         </MenuItem>
-        <MenuItem onClick={() => { setCategoryFilter('fuel'); handleFilterMenuClose(); }}>
-          محروقات ونقل
-        </MenuItem>
-        <MenuItem onClick={() => { setCategoryFilter('maintenance'); handleFilterMenuClose(); }}>
-          صيانة
-        </MenuItem>
-        <MenuItem onClick={() => { setCategoryFilter('hospitality'); handleFilterMenuClose(); }}>
-          ضيافة
-        </MenuItem>
+        {availableCategories.map((cat) => (
+          <MenuItem key={cat} onClick={() => { setCategoryFilter(cat); handleFilterMenuClose(); }}>
+            {cat}
+          </MenuItem>
+        ))}
       </Menu>
 
       {/* Export Menu */}

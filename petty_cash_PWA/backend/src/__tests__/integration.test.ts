@@ -129,6 +129,32 @@ describe('protected routes', () => {
     expect(body.data.length).toBeGreaterThan(0);
   });
 
+  it('GET /api/reports/summary returns real aggregates', async () => {
+    const { status, body } = await req('/api/reports/summary');
+    expect(status).toBe(200);
+    const d = body.data;
+    expect(d).toHaveProperty('totalExpenses');
+    expect(d).toHaveProperty('vatAmount');
+    expect(d).toHaveProperty('dailyBurnRate');
+    expect(d).toHaveProperty('remainingBalance');
+    expect(d).toHaveProperty('consumptionRate');
+    expect(Array.isArray(d.categorySpending)).toBe(true);
+    expect(Array.isArray(d.monthlySpending)).toBe(true);
+    expect(Array.isArray(d.topVendors)).toBe(true);
+  });
+
+  it('GET /api/reports/summary requires auth', async () => {
+    const res = await fetch(`${BASE}/api/reports/summary`);
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /api/reports/summary accepts date-range filter', async () => {
+    const { status, body } = await req('/api/reports/summary?from=2000-01-01&to=2000-01-02');
+    expect(status).toBe(200);
+    expect(body.data.totalExpenses).toBe(0);
+    expect(body.data.lineCount).toBe(0);
+  });
+
   it('GET /api/notifications returns items', async () => {
     const { status, body } = await req('/api/notifications');
     expect(status).toBe(200);

@@ -35,6 +35,7 @@ export interface Request {
   id: string;
   userId: string;
   odooRequestId?: number;
+  name?: string;
   type: RequestType;
   amount: number;
   description: string;

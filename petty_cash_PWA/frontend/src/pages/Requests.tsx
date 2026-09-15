@@ -632,7 +632,7 @@ const Requests: React.FC<RequestsProps> = () => {
                         <Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Typography variant="body2" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-                              <span className="number">#REQ-2025-{String(request.odooRequestId || '').padStart(3, '0')}</span>
+                              <span className="number">{request.name || `#${request.odooRequestId}`}</span>
                             </Typography>
                             <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'divider' }} />
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>

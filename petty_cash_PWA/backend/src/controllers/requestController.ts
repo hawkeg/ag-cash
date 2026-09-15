@@ -19,7 +19,7 @@ const ODOO_MODEL = 'ems.petty.request';
 const ODOO_LINE_MODEL = 'ems.petty.expense.line';
 const REQUEST_FIELDS = [
   'id', 'name', 'holder_id', 'date', 'description', 'amount_total', 'state',
-  'dedicated_request_id', 'rejection_reason', 'create_date', 'write_date',
+  'dedicated_request_id', 'rejection_reason', 'create_date', 'write_date', 'manager_id',
 ];
 
 // Odoo state -> shared RequestStatus
@@ -56,11 +56,13 @@ const mapRequest = (r: any): Request => ({
   id: String(r.id),
   userId: `holder_${Array.isArray(r.holder_id) ? r.holder_id[0] : r.holder_id}`,
   odooRequestId: r.id,
+  name: r.name || undefined,
   type: r.dedicated_request_id ? RequestType.ADVANCE : RequestType.EXPENSE,
   amount: r.amount_total || 0,
   description: r.description || r.name,
   status: odooToStatus[r.state] || RequestStatus.DRAFT,
   rejectionReason: r.rejection_reason || undefined,
+  approvedBy: Array.isArray(r.manager_id) ? r.manager_id[1] : undefined,
   createdAt: r.create_date ? new Date(r.create_date) : new Date(),
   updatedAt: r.write_date ? new Date(r.write_date) : new Date(),
 });

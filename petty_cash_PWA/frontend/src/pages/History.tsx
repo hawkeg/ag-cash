@@ -18,6 +18,7 @@ import {
   useMediaQuery,
   CircularProgress,
   Collapse,
+  Alert,
 } from '@mui/material'
 import {
   Search as SearchIcon,
@@ -36,6 +37,7 @@ import {
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material'
 import { Request, RequestStatus } from '@shared/types'
+import { requestsAPI } from '../services/api'
 
 interface HistoryProps {
   // Placeholder for future props like API service
@@ -44,155 +46,14 @@ interface HistoryProps {
 type DateRangeFilter = 'week' | 'month' | '3months' | 'custom'
 type StatusFilter = 'all' | 'completed' | RequestStatus.APPROVED | RequestStatus.REJECTED | RequestStatus.PAID
 
-// Mock data for development - past (processed) requests only
-const mockHistoryRequests: Request[] = [
-  {
-    id: '101',
-    userId: 'user1',
-    odooRequestId: 84,
-    type: 'EXPENSE' as any,
-    amount: 540.00,
-    description: 'شراء مستلزمات مكتبية وأحبار طابعة',
-    status: RequestStatus.PAID,
-    submittedAt: new Date('2025-05-14'),
-    approvedAt: new Date('2025-05-15'),
-    createdAt: new Date('2025-05-14'),
-    updatedAt: new Date('2025-05-16'),
-    expenses: [
-      { id: 'e1', requestId: '101', amount: 200, description: 'أحبار طابعة', createdAt: new Date(), updatedAt: new Date() },
-      { id: 'e2', requestId: '101', amount: 180, description: 'ورق A4', createdAt: new Date(), updatedAt: new Date() },
-      { id: 'e3', requestId: '101', amount: 160, description: 'أقلام', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '102',
-    userId: 'user1',
-    odooRequestId: 79,
-    type: 'EXPENSE' as any,
-    amount: 215.50,
-    description: 'وقود لسيارة الشركة ورسوم مواقف',
-    status: RequestStatus.PAID,
-    submittedAt: new Date('2025-05-12'),
-    approvedAt: new Date('2025-05-12'),
-    createdAt: new Date('2025-05-12'),
-    updatedAt: new Date('2025-05-13'),
-    expenses: [
-      { id: 'e4', requestId: '102', amount: 150, description: 'وقود', createdAt: new Date(), updatedAt: new Date() },
-      { id: 'e5', requestId: '102', amount: 65.50, description: 'مواقف', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '103',
-    userId: 'user1',
-    odooRequestId: 71,
-    type: 'EXPENSE' as any,
-    amount: 420.00,
-    description: 'ضيافة وفد زائر واستراحة قهوة',
-    status: RequestStatus.APPROVED,
-    submittedAt: new Date('2025-05-09'),
-    approvedAt: new Date('2025-05-10'),
-    approvedBy: 'manager1',
-    createdAt: new Date('2025-05-09'),
-    updatedAt: new Date('2025-05-10'),
-    expenses: [
-      { id: 'e6', requestId: '103', amount: 420, description: 'ضيافة', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '104',
-    userId: 'user1',
-    odooRequestId: 65,
-    type: 'EXPENSE' as any,
-    amount: 180.00,
-    description: 'شراء أجهزة حماية شخصية',
-    status: RequestStatus.REJECTED,
-    submittedAt: new Date('2025-05-02'),
-    rejectedAt: new Date('2025-05-03'),
-    rejectedBy: 'manager1',
-    rejectionReason: 'المبلغ يتجاوز الحد المسموح للصنف',
-    createdAt: new Date('2025-05-02'),
-    updatedAt: new Date('2025-05-03'),
-    expenses: [
-      { id: 'e8', requestId: '104', amount: 180, description: 'خوذات', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '105',
-    userId: 'user1',
-    odooRequestId: 58,
-    type: 'EXPENSE' as any,
-    amount: 1250.00,
-    description: 'قطع غيار لصيانة معدات الموقع',
-    status: RequestStatus.PAID,
-    submittedAt: new Date('2025-04-20'),
-    approvedAt: new Date('2025-04-21'),
-    createdAt: new Date('2025-04-20'),
-    updatedAt: new Date('2025-04-23'),
-    expenses: [
-      { id: 'e9', requestId: '105', amount: 1250, description: 'قطع غيار', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '106',
-    userId: 'user1',
-    odooRequestId: 52,
-    type: 'EXPENSE' as any,
-    amount: 95.75,
-    description: 'أدوات نظافة ومعقمات للمكتب',
-    status: RequestStatus.APPROVED,
-    submittedAt: new Date('2025-04-15'),
-    approvedAt: new Date('2025-04-16'),
-    approvedBy: 'manager1',
-    createdAt: new Date('2025-04-15'),
-    updatedAt: new Date('2025-04-16'),
-    expenses: [
-      { id: 'e10', requestId: '106', amount: 95.75, description: 'منظفات', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '107',
-    userId: 'user1',
-    odooRequestId: 47,
-    type: 'EXPENSE' as any,
-    amount: 680.00,
-    description: 'اشتراك برامج وتطبيقات العمل',
-    status: RequestStatus.REJECTED,
-    submittedAt: new Date('2025-03-28'),
-    rejectedAt: new Date('2025-03-30'),
-    rejectedBy: 'manager1',
-    rejectionReason: 'غير مدرج ضمن الميزانية المعتمدة',
-    createdAt: new Date('2025-03-28'),
-    updatedAt: new Date('2025-03-30'),
-    expenses: [
-      { id: 'e11', requestId: '107', amount: 680, description: 'اشتراكات', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-  {
-    id: '108',
-    userId: 'user1',
-    odooRequestId: 41,
-    type: 'EXPENSE' as any,
-    amount: 320.00,
-    description: 'رسوم شحن ونقل عينات للموقع',
-    status: RequestStatus.PAID,
-    submittedAt: new Date('2025-03-10'),
-    approvedAt: new Date('2025-03-11'),
-    createdAt: new Date('2025-03-10'),
-    updatedAt: new Date('2025-03-13'),
-    expenses: [
-      { id: 'e12', requestId: '108', amount: 320, description: 'شحن', createdAt: new Date(), updatedAt: new Date() },
-    ],
-  },
-]
-
 const History: React.FC<HistoryProps> = () => {
   const navigate = useNavigate()
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const isRtl = theme.direction === 'rtl'
 
-  const [requests] = useState<Request[]>(mockHistoryRequests)
-  const [filteredRequests, setFilteredRequests] = useState<Request[]>(mockHistoryRequests)
+  const [requests, setRequests] = useState<Request[]>([])
+  const [filteredRequests, setFilteredRequests] = useState<Request[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateRange, setDateRange] = useState<DateRangeFilter>('3months')
@@ -200,7 +61,26 @@ const History: React.FC<HistoryProps> = () => {
   const [customEndDate, setCustomEndDate] = useState('')
   const [dateMenuAnchor, setDateMenuAnchor] = useState<null | HTMLElement>(null)
   const [exportMenuAnchor, setExportMenuAnchor] = useState<null | HTMLElement>(null)
-  const [loading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setLoading(true)
+        const res = await requestsAPI.getAll({ page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' })
+        const all = res.data?.data ?? []
+        setRequests(all.filter((r: Request) =>
+          [RequestStatus.APPROVED, RequestStatus.REJECTED, RequestStatus.PAID, RequestStatus.CANCELLED].includes(r.status)
+        ))
+      } catch (err: any) {
+        setError(err?.response?.data?.error?.message || 'تعذر تحميل السجل')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchHistory()
+  }, [])
 
   // Get start date for a date range filter
   const getRangeStartDate = (range: DateRangeFilter): Date | null => {
@@ -376,7 +256,7 @@ const History: React.FC<HistoryProps> = () => {
     handleExportMenuClose()
     const headers = ['رقم الطلب', 'الوصف', 'المبلغ', 'الحالة', 'تاريخ الإنشاء']
     const rows = filteredRequests.map(r => [
-      `REQ-2025-${String(r.odooRequestId || '').padStart(3, '0')}`,
+      r.name || `#${r.odooRequestId}`,
       `"${r.description.replace(/"/g, '""')}"`,
       r.amount.toFixed(2),
       getStatusConfig(r.status).label,
@@ -398,7 +278,7 @@ const History: React.FC<HistoryProps> = () => {
     handleExportMenuClose()
     const rows = filteredRequests.map(r => `
       <tr>
-        <td>REQ-2025-${String(r.odooRequestId || '').padStart(3, '0')}</td>
+        <td>${r.name || `#${r.odooRequestId}`}</td>
         <td>${r.description}</td>
         <td>${r.amount.toFixed(2)}</td>
         <td>${getStatusConfig(r.status).label}</td>
@@ -639,6 +519,12 @@ const History: React.FC<HistoryProps> = () => {
         />
       </Box>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       {/* Loading State */}
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -648,7 +534,7 @@ const History: React.FC<HistoryProps> = () => {
 
       {/* Requests List */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {filteredRequests.length === 0 ? (
+        {!loading && filteredRequests.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="body1" sx={{ color: 'text.secondary' }}>
               لا توجد طلبات مطابقة في السجل
@@ -698,7 +584,7 @@ const History: React.FC<HistoryProps> = () => {
                       <Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography variant="body2" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-                            <span className="number">#REQ-2025-{String(request.odooRequestId || '').padStart(3, '0')}</span>
+                            <span className="number">{request.name || `#${request.odooRequestId}`}</span>
                           </Typography>
                           <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'divider' }} />
                           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
