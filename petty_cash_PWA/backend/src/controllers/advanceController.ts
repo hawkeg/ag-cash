@@ -124,6 +124,33 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json(response);
 }));
 
+// Read-only list of the holder's replenishments (top-ups) — finance-created in Odoo
+router.get('/replenishments', asyncHandler(async (req: Request, res: Response) => {
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
+
+  const auth = await odooAuthenticate();
+  const rows = await search_read(auth, {
+    model: 'ems.petty.replenishment',
+    domain: [['holder_id', '=', holderId]],
+    fields: ['id', 'name', 'date', 'amount', 'state', 'journal_id', 'note', 'create_date'],
+    limit: 50,
+    order: 'id desc',
+  });
+
+  const data = rows.map((r: any) => ({
+    id: String(r.id),
+    name: r.name,
+    date: r.date || r.create_date,
+    amount: r.amount || 0,
+    state: r.state,
+    journal: Array.isArray(r.journal_id) ? r.journal_id[1] : undefined,
+    note: r.note || undefined,
+  }));
+
+  res.status(200).json({ success: true, data, timestamp: new Date() } as ApiResponse<any[]>);
+}));
+
 // Get advance by ID
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const holderId = getHolderId(req);

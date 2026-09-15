@@ -50,6 +50,7 @@ const Dashboard: React.FC = () => {
   });
   const [recentRequests, setRecentRequests] = useState<Request[]>([]);
   const [holder, setHolder] = useState<{ employeeName?: string; department?: string; name?: string } | null>(null);
+  const [replenishments, setReplenishments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +64,15 @@ const Dashboard: React.FC = () => {
       }
       setError(null);
 
-      const res = await api.get('/api/dashboard');
-      const payload = res.data?.data;
+      const [res, replRes] = await Promise.allSettled([
+        api.get('/api/dashboard'),
+        api.get('/api/advances/replenishments'),
+      ]);
+      if (replRes.status === 'fulfilled') {
+        setReplenishments(replRes.value.data?.data ?? []);
+      }
+      if (res.status === 'rejected') throw res.reason;
+      const payload = res.value.data?.data;
 
       setRecentRequests(payload?.recentRequests ?? []);
       setHolder(payload?.holder ?? null);
@@ -301,6 +309,51 @@ const Dashboard: React.FC = () => {
           </List>
         </CardContent>
       </Card>
+
+      {/* Replenishments (top-ups) */}
+      {replenishments.length > 0 && (
+        <Card sx={{ mt: 3 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+              عمليات تغذية العهدة
+            </Typography>
+            <List>
+              {replenishments.slice(0, 5).map((r) => (
+                <ListItem key={r.id} sx={{ px: 0 }}>
+                  <ListItemAvatar>
+                    <Avatar sx={{ bgcolor: '#e6f4f1' }}>
+                      <AccountBalanceWallet sx={{ color: '#235b54' }} />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={r.name}
+                    secondary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(r.date).toLocaleDateString('ar-SA')}
+                        </Typography>
+                        {r.journal && (
+                          <Typography variant="caption" color="text.secondary">
+                            • {r.journal}
+                          </Typography>
+                        )}
+                        <Chip
+                          label={r.state === 'posted' ? 'مرحّل' : 'مسودة'}
+                          size="small"
+                          color={r.state === 'posted' ? 'success' : 'default'}
+                        />
+                      </Box>
+                    }
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#006a4e' }}>
+                    <span className="number">+{formatCurrency(r.amount)}</span>
+                  </Typography>
+                </ListItem>
+              ))}
+            </List>
+          </CardContent>
+        </Card>
+      )}
       </>
       )}
 

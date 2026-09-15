@@ -248,6 +248,10 @@ export const advancesAPI = {
     const response = await api.get<ApiResponse<PaginatedResponse<Advance>>>('/api/advances', { params });
     return response.data;
   },
+  getReplenishments: async () => {
+    const response = await api.get<ApiResponse<any[]>>('/api/advances/replenishments');
+    return response.data;
+  },
   getById: async (id: string) => {
     const response = await api.get<ApiResponse<Advance>>(`/api/advances/${id}`);
     return response.data;
