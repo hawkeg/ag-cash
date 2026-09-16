@@ -152,6 +152,49 @@ router.get('/replenishments', asyncHandler(async (req: Request, res: Response) =
   res.status(200).json({ success: true, data, timestamp: new Date() } as ApiResponse<any[]>);
 }));
 
+// Holder requests a top-up: creates a DRAFT replenishment that finance reviews & posts in Odoo
+const createReplenishmentSchema = Joi.object({
+  amount: Joi.number().positive().required(),
+  note: Joi.string().max(500).allow('').optional(),
+});
+
+router.post('/replenishments', validate(createReplenishmentSchema), asyncHandler(async (req: Request, res: Response) => {
+  const holderId = getHolderId(req);
+  if (!holderId) return errorResponse(res, 403, 'No Odoo holder linked to this user', 'NO_HOLDER');
+
+  const { amount, note } = req.body;
+  const auth = await odooAuthenticate();
+
+  const holders = await search_read(auth, {
+    model: 'ems.petty.holder',
+    domain: [['id', '=', holderId]],
+    fields: ['company_id', 'payment_journal_id', 'state'],
+    limit: 1,
+  });
+  const holder = holders[0];
+  if (!holder) return errorResponse(res, 404, 'Holder not found', 'HOLDER_NOT_FOUND');
+
+  const values: any = {
+    holder_id: holderId,
+    amount,
+    note: note || false,
+    company_id: Array.isArray(holder.company_id) ? holder.company_id[0] : holder.company_id,
+  };
+  if (Array.isArray(holder.payment_journal_id) && holder.payment_journal_id[0]) {
+    values.journal_id = holder.payment_journal_id[0];
+  }
+
+  const id = await odooCreate(auth, { model: 'ems.petty.replenishment', data: values });
+  const created = await search_read(auth, {
+    model: 'ems.petty.replenishment',
+    domain: [['id', '=', id]],
+    fields: ['id', 'name', 'date', 'amount', 'state'],
+    limit: 1,
+  });
+
+  res.status(201).json({ success: true, data: created[0] || { id, amount, state: 'draft' }, timestamp: new Date() } as ApiResponse<any>);
+}));
+
 // Get advance by ID
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const holderId = getHolderId(req);

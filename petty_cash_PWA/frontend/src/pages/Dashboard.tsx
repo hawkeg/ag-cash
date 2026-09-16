@@ -22,6 +22,11 @@ import {
   SpeedDial,
   SpeedDialAction,
   SpeedDialIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   AccountBalanceWallet,
@@ -58,6 +63,32 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [replenishOpen, setReplenishOpen] = useState(false);
+  const [replenishAmount, setReplenishAmount] = useState('');
+  const [replenishNote, setReplenishNote] = useState('');
+  const [replenishSubmitting, setReplenishSubmitting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const submitReplenishment = async () => {
+    const amount = parseFloat(replenishAmount);
+    if (!amount || amount <= 0) {
+      setError('أدخل مبلغ تغذية صحيحاً');
+      return;
+    }
+    setReplenishSubmitting(true);
+    try {
+      await api.post('/api/advances/replenishments', { amount, note: replenishNote || undefined });
+      setReplenishOpen(false);
+      setReplenishAmount('');
+      setReplenishNote('');
+      setNotice('تم إرسال طلب التغذية — بانتظار اعتماد المالية وترحيله');
+      fetchDashboardData(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || 'تعذر إرسال طلب التغذية');
+    } finally {
+      setReplenishSubmitting(false);
+    }
+  };
 
   const fetchDashboardData = useCallback(async (isRefresh = false) => {
     try {
@@ -155,6 +186,11 @@ const Dashboard: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+      {notice && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setNotice(null)}>
+          {notice}
         </Alert>
       )}
 
@@ -315,12 +351,27 @@ const Dashboard: React.FC = () => {
       </Card>
 
       {/* Replenishments (top-ups) */}
-      {replenishments.length > 0 && (
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
               عمليات تغذية العهدة
             </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Add />}
+              onClick={() => setReplenishOpen(true)}
+              sx={{ '& .MuiButton-startIcon': { marginInlineEnd: '6px', marginInlineStart: 0 } }}
+            >
+              طلب تغذية
+            </Button>
+          </Box>
+          {replenishments.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+              لا توجد عمليات تغذية بعد
+            </Typography>
+          ) : (
             <List>
               {replenishments.slice(0, 5).map((r) => (
                 <ListItem key={r.id} sx={{ px: 0 }}>
@@ -355,9 +406,9 @@ const Dashboard: React.FC = () => {
                 </ListItem>
               ))}
             </List>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
       </>
       )}
 
@@ -387,6 +438,44 @@ const Dashboard: React.FC = () => {
           onClick={() => navigate('/advance-request')}
         />
       </SpeedDial>
+
+      {/* Replenishment request dialog */}
+      <Dialog open={replenishOpen} onClose={() => setReplenishOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: 600 }}>طلب تغذية عهدة</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            label="مبلغ التغذية المطلوب"
+            type="number"
+            value={replenishAmount}
+            onChange={(e) => setReplenishAmount(e.target.value)}
+            fullWidth
+            autoFocus
+            inputProps={{ min: 0, step: '0.01' }}
+          />
+          <TextField
+            label="ملاحظة (اختياري)"
+            value={replenishNote}
+            onChange={(e) => setReplenishNote(e.target.value)}
+            fullWidth
+            multiline
+            rows={2}
+          />
+          <Typography variant="caption" color="text.secondary">
+            يُنشأ الطلب كمسودة في Odoo وترحّله المالية بعد الاعتماد
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setReplenishOpen(false)} disabled={replenishSubmitting}>إلغاء</Button>
+          <Button
+            variant="contained"
+            onClick={submitReplenishment}
+            disabled={replenishSubmitting}
+            startIcon={replenishSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {replenishSubmitting ? 'جاري الإرسال...' : 'إرسال الطلب'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
